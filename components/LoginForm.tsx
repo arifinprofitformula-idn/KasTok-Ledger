@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { Lock, LogIn, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginForm() {
+type Props = {
+  disabled?: boolean;
+};
+
+export default function LoginForm({ disabled = false }: Props) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,12 +21,18 @@ export default function LoginForm() {
     setLoading(true);
     setStatus("");
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      setLoading(false);
 
-    if (error) {
-      setStatus("Login gagal. Periksa email dan password.");
+      if (error) {
+        setStatus("Login gagal. Periksa email dan password.");
+        return;
+      }
+    } catch (error) {
+      setLoading(false);
+      setStatus(error instanceof Error ? error.message : "Konfigurasi Supabase bermasalah.");
       return;
     }
 
@@ -46,7 +56,7 @@ export default function LoginForm() {
           <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password Supabase" required />
         </div>
       </label>
-      <button className="btn btn-primary login-submit" type="submit" disabled={loading}>
+      <button className="btn btn-primary login-submit" type="submit" disabled={loading || disabled}>
         <LogIn size={17} />
         {loading ? "Masuk..." : "Masuk ke Dashboard"}
       </button>

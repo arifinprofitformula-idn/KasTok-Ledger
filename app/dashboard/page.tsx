@@ -1,9 +1,15 @@
 import { redirect } from "next/navigation";
 import Dashboard from "@/components/Dashboard";
+import SetupRequired from "@/components/SetupRequired";
+import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Transaction } from "@/lib/types";
 
 export default async function DashboardPage() {
+  if (!getSupabaseEnv().isConfigured) {
+    return <SetupRequired />;
+  }
+
   const supabase = await createClient();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) redirect("/login");

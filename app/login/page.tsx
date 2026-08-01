@@ -1,7 +1,10 @@
 import Image from "next/image";
 import LoginForm from "@/components/LoginForm";
+import { getSupabaseEnv } from "@/lib/supabase/env";
 
 export default function LoginPage() {
+  const envConfigured = getSupabaseEnv().isConfigured;
+
   return (
     <main className="login-shell">
       <section className="login-card">
@@ -13,7 +16,8 @@ export default function LoginPage() {
             <p className="login-copy">Rekap pendapatan TikTok Shop yang rapi, aman, dan siap dibawa ke Vercel.</p>
           </div>
         </div>
-        <LoginForm />
+        {!envConfigured ? <p className="status err">Konfigurasi Supabase belum lengkap di Vercel. Isi `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY`, lalu redeploy.</p> : null}
+        <LoginForm disabled={!envConfigured} />
       </section>
     </main>
   );
