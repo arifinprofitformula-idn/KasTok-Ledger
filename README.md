@@ -61,3 +61,4 @@ Service role key hanya untuk skrip lokal/admin. Jangan pernah isi service role k
 3. Isi environment variable `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 4. Deploy.
 # KasTok-Ledger
+# KasTok-Ledger
