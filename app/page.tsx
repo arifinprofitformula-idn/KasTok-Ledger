@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getSupabaseEnv } from "@/lib/supabase/env";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getAppEnv } from "@/lib/env";
+
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  if (!getSupabaseEnv().isConfigured) {
+  if (!getAppEnv().isConfigured) {
     redirect("/login");
   }
 
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  redirect(data.user ? "/dashboard" : "/login");
+  const user = await getCurrentUser();
+  redirect(user ? "/dashboard" : "/login");
 }

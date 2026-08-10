@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, LogIn, Mail } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 type Props = {
   disabled?: boolean;
@@ -22,17 +21,20 @@ export default function LoginForm({ disabled = false }: Props) {
     setStatus("");
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
       setLoading(false);
 
-      if (error) {
+      if (!response.ok) {
         setStatus("Login gagal. Periksa email dan password.");
         return;
       }
     } catch (error) {
       setLoading(false);
-      setStatus(error instanceof Error ? error.message : "Konfigurasi Supabase bermasalah.");
+      setStatus(error instanceof Error ? error.message : "Konfigurasi login bermasalah.");
       return;
     }
 
@@ -53,7 +55,7 @@ export default function LoginForm({ disabled = false }: Props) {
         <span>Password</span>
         <div className="input-shell">
           <Lock size={17} />
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password Supabase" required />
+          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Password" required />
         </div>
       </label>
       <button className="btn btn-primary login-submit" type="submit" disabled={loading || disabled}>

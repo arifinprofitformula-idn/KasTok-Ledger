@@ -1,36 +1,42 @@
 import { redirect } from "next/navigation";
 import Dashboard from "@/components/Dashboard";
 import SetupRequired from "@/components/SetupRequired";
-import { getSupabaseEnv } from "@/lib/supabase/env";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/session";
+import { query } from "@/lib/db";
+import { getAppEnv } from "@/lib/env";
 import type { Transaction } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
-  if (!getSupabaseEnv().isConfigured) {
+  if (!getAppEnv().isConfigured) {
     return <SetupRequired />;
   }
 
-  const supabase = await createClient();
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) redirect("/login");
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
-  const { data, error } = await supabase
-    .from("transactions")
-    .select("*")
-    .eq("user_id", userData.user.id)
-    .order("transaction_date", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: true });
+  let data: Transaction[] = [];
+  let initialError = "";
 
-  const initialError = error
-    ? `${error.message}${error.details ? ` (${error.details})` : ""}`
-    : "";
+  try {
+    const { rows } = await query<Omit<Transaction, "amount"> & { amount: string | number }>(
+      `select id, user_id, reference_id, dedupe_key, type, transaction_date, date_raw, month_key, amount, source_file, created_at
+       from transactions
+       where user_id = $1
+       order by transaction_date asc nulls first, created_at asc`,
+      [user.id]
+    );
+    data = rows.map((row) => ({ ...row, amount: Number(row.amount) }));
+  } catch (error) {
+    initialError = error instanceof Error ? error.message : "Gagal membaca database.";
+  }
 
   return (
     <Dashboard
-      initialTransactions={(data || []) as Transaction[]}
+      initialTransactions={data}
       initialError={initialError}
-      userEmail={userData.user.email || ""}
-      userId={userData.user.id}
+      userEmail={user.email}
     />
   );
 }

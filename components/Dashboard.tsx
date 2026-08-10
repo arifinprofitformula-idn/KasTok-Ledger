@@ -12,17 +12,15 @@ import { applyDateFilter, groupByPeriod, summarize } from "@/lib/calculations";
 import { clearPrintArea, exportMonthlyRecap } from "@/lib/export";
 import { fmt } from "@/lib/format";
 import { parseFiles } from "@/lib/parser";
-import { createClient } from "@/lib/supabase/client";
 import type { DateFilter, Granularity, Transaction } from "@/lib/types";
 
 type Props = {
   initialTransactions: Transaction[];
   initialError?: string;
   userEmail: string;
-  userId: string;
 };
 
-export default function Dashboard({ initialTransactions, initialError = "", userEmail, userId }: Props) {
+export default function Dashboard({ initialTransactions, initialError = "", userEmail }: Props) {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [splitYou, setSplitYou] = useState(40);
   const [splitSupplier, setSplitSupplier] = useState(60);
@@ -30,7 +28,7 @@ export default function Dashboard({ initialTransactions, initialError = "", user
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [filter, setFilter] = useState<DateFilter>({ from: "", to: "" });
   const [status, setStatusState] = useState<{ text: string; kind?: "ok" | "err" }>({
-    text: initialError ? `Gagal membaca tabel transactions. Pastikan supabase/schema.sql sudah dijalankan. Detail: ${initialError}` : "",
+    text: initialError ? `Gagal membaca tabel transactions. Pastikan database/schema.sql sudah dijalankan. Detail: ${initialError}` : "",
     kind: initialError ? "err" : undefined
   });
 
@@ -51,13 +49,13 @@ export default function Dashboard({ initialTransactions, initialError = "", user
   }, [filteredTransactions, splitYou, splitSupplier]);
 
   async function refreshTransactions() {
-    const supabase = createClient();
-    const { data, error } = await supabase.from("transactions").select("*").eq("user_id", userId).order("transaction_date", { ascending: true, nullsFirst: false }).order("created_at", { ascending: true });
-    if (error) {
+    const response = await fetch("/api/transactions");
+    if (!response.ok) {
       setStatus("Gagal memuat ulang data dari database.", "err");
       return;
     }
-    setTransactions((data || []) as Transaction[]);
+    const data = await response.json();
+    setTransactions((data.transactions || []) as Transaction[]);
   }
 
   async function handleFiles(files: File[]) {
@@ -75,12 +73,15 @@ export default function Dashboard({ initialTransactions, initialError = "", user
       return;
     }
 
-    const supabase = createClient();
-    const payload = parsed.transactions.map((item) => ({ ...item, user_id: userId }));
-    const { error } = await supabase.from("transactions").upsert(payload, { onConflict: "user_id,dedupe_key", ignoreDuplicates: true });
+    const response = await fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transactions: parsed.transactions })
+    });
 
-    if (error) {
-      setStatus(`Gagal menyimpan ke database: ${error.message}`, "err");
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      setStatus(`Gagal menyimpan ke database: ${data?.error || "Request gagal."}`, "err");
       return;
     }
 

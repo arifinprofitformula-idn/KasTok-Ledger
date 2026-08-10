@@ -1,31 +1,40 @@
 # KasTok Ledger
 
-Aplikasi rekap pendapatan TikTok Shop berbasis Next.js, Supabase Auth, dan Supabase Postgres.
+Aplikasi rekap pendapatan TikTok Shop berbasis Next.js dan PostgreSQL self-hosted.
 
 ## Environment
 
 Salin `.env.local.example` menjadi `.env.local`, lalu isi:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+DATABASE_URL=postgresql://user:password@host:5432/kastok_ledger
+AUTH_SECRET=isi-random-minimal-32-karakter
+DATABASE_SSL=false
+SUPERADMIN_EMAIL=admin@example.com
+SUPERADMIN_PASSWORD=change-this-strong-password
 ```
 
-## Setup Supabase
+Gunakan `DATABASE_SSL=true` kalau koneksi database VPS kamu mewajibkan SSL.
 
-1. Buat project Supabase.
-2. Buka SQL Editor.
-3. Jalankan isi file `supabase/schema.sql`.
-4. Aktifkan Auth email/password di Supabase Authentication.
-5. Buat user dari Supabase Dashboard atau lewat halaman login setelah user tersedia.
+## Setup Database
+
+1. Buat database PostgreSQL di VPS.
+2. Jalankan isi file `database/schema.sql`.
+3. Isi `.env.local`.
+4. Buat akun admin:
+
+```bash
+npm run create-superadmin
+```
 
 ## Catatan Keamanan
 
-- Jangan pernah memakai Supabase service role key di frontend atau Vercel public env.
-- Aplikasi hanya membutuhkan anon key; akses data dibatasi oleh Supabase Row Level Security.
+- Jangan expose port PostgreSQL ke publik tanpa firewall atau allowlist.
+- Browser tidak memegang credential database; semua query berjalan lewat server route Next.js.
+- Session login disimpan di cookie HTTP-only bertanda tangan `AUTH_SECRET`.
 - Tabel `transactions` punya unique constraint `(user_id, dedupe_key)` untuk mencegah transaksi ganda.
-- Library `xlsx` dipakai sesuai requirement untuk membaca export TikTok Shop di browser. Batasi penggunaan untuk file export internal yang tepercaya karena advisory npm untuk SheetJS belum memiliki fix resmi.
-- File XLSX tidak diunggah ke server aplikasi; browser hanya menyimpan hasil parsing transaksi ke Supabase.
+- Library `xlsx` dipakai untuk membaca export TikTok Shop di browser. Batasi penggunaan untuk file export internal yang tepercaya karena advisory npm untuk SheetJS belum memiliki fix resmi.
+- File XLSX tidak diunggah ke server aplikasi; browser hanya menyimpan hasil parsing transaksi ke database melalui API aplikasi.
 
 ## Development
 
@@ -36,29 +45,10 @@ npm run dev
 
 Dashboard berjalan di `/dashboard`, login di `/login`.
 
-## Membuat Akun Superadmin
-
-Tambahkan variable berikut ke `.env.local` lokal:
-
-```bash
-SUPABASE_SERVICE_ROLE_KEY=
-SUPERADMIN_EMAIL=
-SUPERADMIN_PASSWORD=
-```
-
-Lalu jalankan:
-
-```bash
-npm run create-superadmin
-```
-
-Service role key hanya untuk skrip lokal/admin. Jangan pernah isi service role key di Vercel sebagai public env dan jangan dipakai di kode frontend.
-
-## Deploy ke Vercel
+## Deploy
 
 1. Push project ini ke GitHub.
-2. Import repository di Vercel.
-3. Isi environment variable `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-4. Deploy.
-# KasTok-Ledger
-# KasTok-Ledger
+2. Deploy ke Vercel atau VPS Node.js.
+3. Isi environment variable `DATABASE_URL`, `AUTH_SECRET`, dan `DATABASE_SSL` bila perlu.
+4. Jalankan `database/schema.sql` di database production.
+5. Jalankan `npm run create-superadmin` dengan env production untuk membuat akun awal.

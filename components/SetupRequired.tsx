@@ -10,12 +10,12 @@ export default function SetupRequired() {
             <p className="eyebrow">Setup Diperlukan</p>
             <h1>KasTok Ledger</h1>
             <p className="login-copy">
-              Konfigurasi Supabase belum terbaca di runtime. Isi environment variable Vercel lalu redeploy.
+              Konfigurasi database belum terbaca di runtime. Isi environment variable lalu redeploy.
             </p>
           </div>
         </div>
         <div className="status err">
-          Wajib ada: NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY.
+          Wajib ada: DATABASE_URL dan AUTH_SECRET.
         </div>
       </section>
     </main>

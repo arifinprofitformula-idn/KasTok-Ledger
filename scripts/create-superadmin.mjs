@@ -1,6 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { createClient } from "@supabase/supabase-js";
+import { randomBytes, scrypt as scryptCallback } from "node:crypto";
+import { promisify } from "node:util";
+import pg from "pg";
+
+const scrypt = promisify(scryptCallback);
 
 function loadEnvFile() {
   const envPath = resolve(process.cwd(), ".env.local");
@@ -18,15 +22,20 @@ function loadEnvFile() {
   }
 }
 
+async function hashPassword(password) {
+  const salt = randomBytes(16).toString("hex");
+  const key = await scrypt(password, salt, 64);
+  return `scrypt:${salt}:${key.toString("hex")}`;
+}
+
 loadEnvFile();
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const databaseUrl = process.env.DATABASE_URL;
 const email = process.env.SUPERADMIN_EMAIL;
 const password = process.env.SUPERADMIN_PASSWORD;
 
-if (!url || !serviceRoleKey || !email || !password) {
-  console.error("Missing env. Required: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD");
+if (!databaseUrl || !email || !password) {
+  console.error("Missing env. Required: DATABASE_URL, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD");
   process.exit(1);
 }
 
@@ -35,49 +44,22 @@ if (password.length < 12) {
   process.exit(1);
 }
 
-const supabase = createClient(url, serviceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
+const pool = new pg.Pool({
+  connectionString: databaseUrl,
+  ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : undefined
 });
 
-const { data: list, error: listError } = await supabase.auth.admin.listUsers();
-if (listError) {
-  console.error(`Failed to list users: ${listError.message}`);
-  process.exit(1);
+try {
+  const passwordHash = await hashPassword(password);
+  await pool.query(
+    `insert into users (email, password_hash, role)
+     values ($1, $2, 'superadmin')
+     on conflict (email)
+     do update set password_hash = excluded.password_hash, role = 'superadmin'`,
+    [email.trim().toLowerCase(), passwordHash]
+  );
+
+  console.log(`Superadmin ready: ${email}`);
+} finally {
+  await pool.end();
 }
-
-const existing = list.users.find((user) => user.email?.toLowerCase() === email.toLowerCase());
-
-if (existing) {
-  const { error } = await supabase.auth.admin.updateUserById(existing.id, {
-    password,
-    email_confirm: true,
-    user_metadata: { role: "superadmin" },
-    app_metadata: { role: "superadmin" }
-  });
-
-  if (error) {
-    console.error(`Failed to update superadmin: ${error.message}`);
-    process.exit(1);
-  }
-
-  console.log(`Superadmin updated: ${email}`);
-  process.exit(0);
-}
-
-const { error } = await supabase.auth.admin.createUser({
-  email,
-  password,
-  email_confirm: true,
-  user_metadata: { role: "superadmin" },
-  app_metadata: { role: "superadmin" }
-});
-
-if (error) {
-  console.error(`Failed to create superadmin: ${error.message}`);
-  process.exit(1);
-}
-
-console.log(`Superadmin created: ${email}`);
