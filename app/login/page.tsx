@@ -11,7 +11,7 @@ export default function LoginPage() {
     <main className="login-shell">
       <section className="login-card">
         <div className="login-brand">
-          <Image src="/kastok-logo.svg" alt="KasTok Ledger" width={116} height={116} priority />
+          <Image src="/kastok-logo.webp" alt="Tokopedia dan TikTok Shop" width={116} height={116} priority />
           <div>
             <p className="eyebrow">Buku Kas Digital</p>
             <h1>KasTok Ledger</h1>

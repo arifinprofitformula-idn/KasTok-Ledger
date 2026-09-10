@@ -95,7 +95,7 @@ export default function Dashboard({ initialTransactions, initialError = "", user
   return (
     <main className="wrap">
       <div className="brand-badge" title="KasTok Ledger">
-        <Image src="/kastok-logo.svg" alt="KasTok Ledger" width={46} height={46} />
+        <Image src="/kastok-logo.webp" alt="Tokopedia dan TikTok Shop" width={58} height={58} />
       </div>
 
       <header className="hero">

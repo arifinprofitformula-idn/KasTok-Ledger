@@ -5,7 +5,7 @@ export default function SetupRequired() {
     <main className="login-shell">
       <section className="login-card">
         <div className="login-brand">
-          <Image src="/kastok-logo.svg" alt="KasTok Ledger" width={96} height={96} priority />
+          <Image src="/kastok-logo.webp" alt="Tokopedia dan TikTok Shop" width={96} height={96} priority />
           <div>
             <p className="eyebrow">Setup Diperlukan</p>
             <h1>KasTok Ledger</h1>
