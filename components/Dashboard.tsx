@@ -160,7 +160,7 @@ export default function Dashboard({ initialTransactions, initialError = "", user
       <LedgerView transactions={filteredTransactions} granularity={granularity} splitYou={splitYou} splitSupplier={splitSupplier} setStatus={setStatus} />
 
       <div id="printArea" />
-      <footer>KasTok Ledger · Gross Profit = Total Earnings - Total GMV Pay Deduction</footer>
+      <footer>KasTok Ledger · Gross Profit = Total Withdrawal - Total GMV Pay Deduction</footer>
     </main>
   );
 }

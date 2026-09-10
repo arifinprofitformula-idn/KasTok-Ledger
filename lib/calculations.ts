@@ -63,7 +63,7 @@ export function summarize(list: Transaction[]): Summary {
     if (item.type === "Earnings") earnings += abs;
   });
 
-  return { withdrawal, gmv, earnings, gross: earnings - gmv };
+  return { withdrawal, gmv, earnings, gross: withdrawal - gmv };
 }
 
 export function groupByPeriod(granularity: Granularity, list: Transaction[]) {

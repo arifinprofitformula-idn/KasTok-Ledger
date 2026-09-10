@@ -40,7 +40,6 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
 
   const list = grouped[currentKey].slice().sort((a, b) => a.date_raw.localeCompare(b.date_raw));
   const summary = summarize(list);
-  const variance = summary.gross - summary.withdrawal;
 
   return (
     <section className="ledger">
@@ -65,7 +64,7 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
           <div className="page-head-right">
             <div className="stamp">
               Gross Profit<br />{fmt(summary.gross)}
-              <small>Earnings - GMV Deduction</small>
+              <small>Withdrawal - GMV Pay Deduction</small>
             </div>
             <div className="card-tools">
               <button className="icon-btn" type="button" title="Cetak / simpan sebagai PDF" onClick={() => printSection(pageRef.current, `rekap-${currentKey}`)}>
@@ -98,13 +97,11 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
               <td className="ramt pos">{fmtSigned(summary.earnings)}</td>
             </tr>
             <tr className="total">
-              <td>Gross Profit (Earnings - GMV Deduction)</td>
+              <td>Gross Profit (Withdrawal - GMV Pay Deduction)</td>
               <td className="ramt">{fmt(summary.gross)}</td>
             </tr>
           </tbody>
         </table>
-
-        {Math.abs(variance) > 1 ? <div className="note">Catatan: selisih {fmt(Math.abs(variance))} terhadap total withdrawal, kemungkinan ada saldo yang belum dicairkan pada periode ini.</div> : null}
 
         <div className="split-grid">
           <div className="split-card you">
