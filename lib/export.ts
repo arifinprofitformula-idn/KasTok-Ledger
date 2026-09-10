@@ -3,6 +3,7 @@
 import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
 import { groupByPeriod, summarize } from "@/lib/calculations";
+import { splitCashPool } from "@/lib/cash-sharing";
 import { monthLabel } from "@/lib/format";
 import type { Transaction } from "@/lib/types";
 
@@ -55,37 +56,42 @@ export function exportMonthlyRecap(transactions: Transaction[], splitYou: number
 
   const header = [
     "Bulan",
-    "Total Withdrawal",
-    "Total GMV Pay Deduction",
-    "Total Earnings",
-    "Gross Profit",
+    "Dana Masuk Rekening",
+    "Biaya Marketing GMV Pay",
+    "Pendapatan Tercatat Marketplace",
+    "Dana Bersih Siap Dibagi",
     `Bagian Anda (${splitYou}%)`,
-    `Bagian Supplier (${splitSupplier}%)`
+    `Bagian Supplier + HPP (${splitSupplier}%)`
   ];
   const rows: (string | number)[][] = [header];
   let totalWithdrawal = 0;
   let totalGmv = 0;
   let totalEarnings = 0;
-  let totalGross = 0;
+  let totalCashPool = 0;
+  let totalYourShare = 0;
+  let totalSupplierShare = 0;
 
   keys.forEach((key) => {
     const summary = summarize(grouped[key]);
+    const shares = splitCashPool(summary.gross, splitYou);
     totalWithdrawal += summary.withdrawal;
     totalGmv += summary.gmv;
     totalEarnings += summary.earnings;
-    totalGross += summary.gross;
+    totalCashPool += shares.cashPool;
+    totalYourShare += shares.yourShare;
+    totalSupplierShare += shares.supplierShare;
     rows.push([
       monthLabel(key),
       summary.withdrawal,
       summary.gmv,
       summary.earnings,
-      summary.gross,
-      summary.gross * (splitYou / 100),
-      summary.gross * (splitSupplier / 100)
+      shares.cashPool,
+      shares.yourShare,
+      shares.supplierShare
     ]);
   });
 
-  rows.push(["TOTAL", totalWithdrawal, totalGmv, totalEarnings, totalGross, totalGross * (splitYou / 100), totalGross * (splitSupplier / 100)]);
+  rows.push(["TOTAL", totalWithdrawal, totalGmv, totalEarnings, totalCashPool, totalYourShare, totalSupplierShare]);
 
   const workbook = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(rows);

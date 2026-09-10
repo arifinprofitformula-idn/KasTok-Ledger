@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Download, Printer } from "lucide-react";
 import { granName, groupByPeriod, periodLabel, summarize } from "@/lib/calculations";
+import { splitCashPool } from "@/lib/cash-sharing";
 import { exportImage, printSection } from "@/lib/export";
 import { fmt, fmtSigned } from "@/lib/format";
 import type { Granularity, Transaction } from "@/lib/types";
@@ -40,6 +41,7 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
 
   const list = grouped[currentKey].slice().sort((a, b) => a.date_raw.localeCompare(b.date_raw));
   const summary = summarize(list);
+  const shares = splitCashPool(summary.gross, splitYou);
 
   return (
     <section className="ledger">
@@ -63,8 +65,8 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
           </div>
           <div className="page-head-right">
             <div className="stamp">
-              Gross Profit<br />{fmt(summary.gross)}
-              <small>Withdrawal - GMV Pay Deduction</small>
+              Dana Bersih Siap Dibagi<br />{fmt(summary.gross)}
+              <small>Dana Masuk Rekening - Biaya Marketing GMV Pay</small>
             </div>
             <div className="card-tools">
               <button className="icon-btn" type="button" title="Cetak / simpan sebagai PDF" onClick={() => printSection(pageRef.current, `rekap-${currentKey}`)}>
@@ -85,19 +87,19 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
         <table className="rows">
           <tbody>
             <tr>
-              <td className="rlabel">Total Withdrawal (ke rekening bank)</td>
-              <td className="ramt neg">{fmtSigned(-summary.withdrawal)}</td>
+              <td className="rlabel">Dana Masuk Rekening (Withdrawal)</td>
+              <td className="ramt pos">{fmtSigned(summary.withdrawal)}</td>
             </tr>
             <tr>
-              <td className="rlabel">Total GMV Pay Deduction</td>
+              <td className="rlabel">Biaya Marketing GMV Pay</td>
               <td className="ramt neg">{fmtSigned(-summary.gmv)}</td>
             </tr>
             <tr>
-              <td className="rlabel">Total Earnings</td>
+              <td className="rlabel">Pendapatan Tercatat Marketplace (informasi)</td>
               <td className="ramt pos">{fmtSigned(summary.earnings)}</td>
             </tr>
             <tr className="total">
-              <td>Gross Profit (Withdrawal - GMV Pay Deduction)</td>
+              <td>Dana Bersih Siap Dibagi</td>
               <td className="ramt">{fmt(summary.gross)}</td>
             </tr>
           </tbody>
@@ -106,11 +108,11 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
         <div className="split-grid">
           <div className="split-card you">
             <div className="pct">BAGIAN ANDA · {splitYou}%</div>
-            <div className="amt">{fmt(summary.gross * (splitYou / 100))}</div>
+            <div className="amt">{fmt(shares.yourShare)}</div>
           </div>
           <div className="split-card supplier">
-            <div className="pct">BAGIAN SUPPLIER · {splitSupplier}%</div>
-            <div className="amt">{fmt(summary.gross * (splitSupplier / 100))}</div>
+            <div className="pct">BAGIAN SUPPLIER + HPP · {splitSupplier}%</div>
+            <div className="amt">{fmt(shares.supplierShare)}</div>
           </div>
         </div>
 

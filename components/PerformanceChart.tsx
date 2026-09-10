@@ -51,7 +51,7 @@ export default function PerformanceChart({ transactions, granularity, selectedMo
     datasets: [
       {
         type: "bar" as const,
-        label: "Gross Profit per periode",
+        label: "Dana Bersih Siap Dibagi per periode",
         data: grossSeries,
         backgroundColor: "rgba(76, 242, 224, 0.72)",
         borderColor: "rgba(76, 242, 224, 0.95)",
@@ -85,7 +85,7 @@ export default function PerformanceChart({ transactions, granularity, selectedMo
         <div>
           <h2>Grafik Pencapaian</h2>
           <div className="sub">
-            TREN GROSS PROFIT · TAMPILAN {granName(granularity).toUpperCase()} · {monthPart}
+            TREN DANA BERSIH SIAP DIBAGI · TAMPILAN {granName(granularity).toUpperCase()} · {monthPart}
           </div>
         </div>
         <div className="page-head-right">

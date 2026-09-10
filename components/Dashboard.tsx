@@ -9,6 +9,7 @@ import PerformanceChart from "@/components/PerformanceChart";
 import SplitControls from "@/components/SplitControls";
 import UploadDropzone from "@/components/UploadDropzone";
 import { applyDateFilter, groupByPeriod, summarize } from "@/lib/calculations";
+import { splitCashPool } from "@/lib/cash-sharing";
 import { clearPrintArea, exportMonthlyRecap } from "@/lib/export";
 import { fmt } from "@/lib/format";
 import { parseFiles } from "@/lib/parser";
@@ -44,9 +45,10 @@ export default function Dashboard({ initialTransactions, initialError = "", user
   const filteredTransactions = useMemo(() => applyDateFilter(transactions, filter), [transactions, filter]);
   const hero = useMemo(() => {
     const monthly = groupByPeriod("month", filteredTransactions);
-    const gross = Object.keys(monthly).reduce((sum, key) => sum + summarize(monthly[key]).gross, 0);
-    return { gross, you: gross * (splitYou / 100), supplier: gross * (splitSupplier / 100) };
-  }, [filteredTransactions, splitYou, splitSupplier]);
+    const cashPool = Object.keys(monthly).reduce((sum, key) => sum + summarize(monthly[key]).gross, 0);
+    const shares = splitCashPool(cashPool, splitYou);
+    return { cashPool, you: shares.yourShare, supplier: shares.supplierShare };
+  }, [filteredTransactions, splitYou]);
 
   async function refreshTransactions() {
     const response = await fetch("/api/transactions");
@@ -109,15 +111,15 @@ export default function Dashboard({ initialTransactions, initialError = "", user
         <div className="hero-actions">
           <div className="hero-figures">
             <div className="fig">
-              <div className="label">Gross Profit</div>
-              <div className="num">{fmt(hero.gross)}</div>
+              <div className="label">Dana Bersih Siap Dibagi</div>
+              <div className="num">{fmt(hero.cashPool)}</div>
             </div>
             <div className="fig you">
               <div className="label">Bagian Anda</div>
               <div className="num">{fmt(hero.you)}</div>
             </div>
             <div className="fig supplier">
-              <div className="label">Bagian Supplier</div>
+              <div className="label">Bagian Supplier + HPP</div>
               <div className="num">{fmt(hero.supplier)}</div>
             </div>
           </div>
@@ -160,7 +162,7 @@ export default function Dashboard({ initialTransactions, initialError = "", user
       <LedgerView transactions={filteredTransactions} granularity={granularity} splitYou={splitYou} splitSupplier={splitSupplier} setStatus={setStatus} />
 
       <div id="printArea" />
-      <footer>KasTok Ledger · Gross Profit = Total Withdrawal - Total GMV Pay Deduction</footer>
+      <footer>KasTok Ledger · Dana Bersih Siap Dibagi = Dana Masuk Rekening - Biaya Marketing GMV Pay</footer>
     </main>
   );
 }

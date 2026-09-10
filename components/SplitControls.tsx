@@ -17,33 +17,37 @@ export default function SplitControls({ splitYou, splitSupplier, setSplitYou, se
   return (
     <div className="controls-row">
       <div className="split-config">
-        <label>Bagian Anda</label>
-        <input
-          type="number"
-          min="0"
-          max="100"
-          value={splitYou}
-          onChange={(event) => {
-            const value = Math.max(0, Math.min(100, Number(event.target.value) || 0));
-            setSplitYou(value);
-            setSplitSupplier(100 - value);
-          }}
-        />
-        <span>%</span>
+        <div className="split-field">
+          <label>Bagian Anda</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={splitYou}
+            onChange={(event) => {
+              const value = Math.max(0, Math.min(100, Number(event.target.value) || 0));
+              setSplitYou(value);
+              setSplitSupplier(100 - value);
+            }}
+          />
+          <span>%</span>
+        </div>
         <span className="eq">/</span>
-        <label>Bagian Supplier</label>
-        <input
-          type="number"
-          min="0"
-          max="100"
-          value={splitSupplier}
-          onChange={(event) => {
-            const value = Math.max(0, Math.min(100, Number(event.target.value) || 0));
-            setSplitSupplier(value);
-            setSplitYou(100 - value);
-          }}
-        />
-        <span>%</span>
+        <div className="split-field">
+          <label>Bagian Supplier + HPP</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={splitSupplier}
+            onChange={(event) => {
+              const value = Math.max(0, Math.min(100, Number(event.target.value) || 0));
+              setSplitSupplier(value);
+              setSplitYou(100 - value);
+            }}
+          />
+          <span>%</span>
+        </div>
       </div>
 
       <div className="gran-toggle" aria-label="Granularitas rekap">
