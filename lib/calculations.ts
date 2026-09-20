@@ -1,5 +1,6 @@
 import type { DateFilter, Granularity, Summary, Transaction } from "@/lib/types";
 import { idMonths } from "@/lib/format";
+import { normalizeDateValue } from "@/lib/date-filter";
 
 export function isoWeekInfo(year: number, month: number, day: number) {
   const date = new Date(Date.UTC(year, month - 1, day));
@@ -78,9 +79,10 @@ export function groupByPeriod(granularity: Granularity, list: Transaction[]) {
 export function applyDateFilter(list: Transaction[], filter: DateFilter) {
   if (!filter.from && !filter.to) return list;
   return list.filter((item) => {
-    if (!item.transaction_date) return false;
-    if (filter.from && item.transaction_date < filter.from) return false;
-    if (filter.to && item.transaction_date > filter.to) return false;
+    const transactionDate = normalizeDateValue(item.transaction_date) || normalizeDateValue(item.date_raw);
+    if (!transactionDate) return false;
+    if (filter.from && transactionDate < filter.from) return false;
+    if (filter.to && transactionDate > filter.to) return false;
     return true;
   });
 }
