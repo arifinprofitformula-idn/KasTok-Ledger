@@ -4,3 +4,10 @@ out
 .env*.local
 .vercel
 *.log
+
+# Logs, caches, and temporary files
+*.log
+logs/
+cache/
+tmp/
+temp/

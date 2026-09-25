@@ -45,6 +45,20 @@ npm run dev
 
 Dashboard berjalan di `/dashboard`, login di `/login`.
 
+Untuk memperbarui database yang sudah ada setelah aplikasi mendapat fitur baru, jalankan:
+
+```bash
+npm run db:migrate
+```
+
+## Laporan Produk Terjual
+
+- Upload export TikTok Shop yang memiliki sheet `OrderSKUList`.
+- Sistem melewati baris deskripsi TikTok, menjaga Order ID/SKU ID sebagai teks, dan tidak menyimpan data penerima atau alamat.
+- Produk terjual bersih dihitung dari pesanan berstatus `Selesai`: `Quantity - Sku Quantity of return`.
+- Status `Dikirim` dan `Perlu dikirim` ditampilkan sebagai proses; status `Dibatalkan` tidak masuk penjualan final.
+- File identik tidak diimpor ulang. File ekspor yang lebih baru memperbarui status baris pesanan lama berdasarkan Order ID, SKU ID, dan variasi.
+
 ## Deploy
 
 1. Push project ini ke GitHub.
