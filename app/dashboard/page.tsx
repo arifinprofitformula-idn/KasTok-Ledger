@@ -35,6 +35,8 @@ export default async function DashboardPage() {
   return (
     <Dashboard
       initialTransactions={data}
+      initialOrderItems={[]}
+      initialOrderImports={[]}
       initialError={initialError}
       userEmail={user.email}
     />

@@ -6,3 +6,9 @@ out
 *.log
 *.tsbuildinfo
 database/backups/
+
+# Logs, caches, and temporary files
+logs/
+cache/
+tmp/
+temp/

@@ -27,3 +27,44 @@ create table if not exists public.transactions (
 
 create index if not exists transactions_user_date_idx on public.transactions (user_id, transaction_date);
 create index if not exists transactions_user_month_idx on public.transactions (user_id, month_key);
+
+create table if not exists order_imports (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  file_name text not null,
+  file_hash text not null,
+  row_count integer not null check (row_count >= 0),
+  imported_at timestamptz not null default now(),
+  unique (user_id, file_hash)
+);
+
+create table if not exists order_items (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  import_id uuid not null references order_imports(id) on delete restrict,
+  order_id text not null,
+  sku_id text not null,
+  seller_sku text not null default '',
+  product_name text not null,
+  variation text not null default '',
+  quantity integer not null check (quantity >= 0),
+  returned_quantity integer not null default 0 check (returned_quantity >= 0),
+  order_status text not null,
+  order_substatus text not null default '',
+  order_created_at timestamp not null,
+  order_date date not null,
+  month_key text not null,
+  unit_original_price numeric,
+  sku_subtotal_after_discount numeric,
+  source_file text not null,
+  source_row integer not null check (source_row > 0),
+  dedupe_key text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, dedupe_key)
+);
+
+create index if not exists order_items_user_date_idx on order_items (user_id, order_date);
+create index if not exists order_items_user_status_idx on order_items (user_id, order_status);
+create index if not exists order_items_user_product_idx on order_items (user_id, product_name);
+create index if not exists order_imports_user_date_idx on order_imports (user_id, imported_at desc);

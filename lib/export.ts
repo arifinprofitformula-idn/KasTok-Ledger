@@ -4,8 +4,9 @@ import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
 import { groupByPeriod, summarize } from "@/lib/calculations";
 import { splitCashPool } from "@/lib/cash-sharing";
+import { aggregateProductSales, summarizeOrderItems } from "@/lib/order-calculations";
 import { monthLabel } from "@/lib/format";
-import type { Transaction } from "@/lib/types";
+import type { OrderItem, Transaction } from "@/lib/types";
 
 export function exportImage(element: HTMLElement | null, filename: string, backgroundColor?: string) {
   if (!element) return Promise.reject(new Error("Elemen tidak ditemukan."));
@@ -111,4 +112,70 @@ export function exportMonthlyRecap(transactions: Transaction[], splitYou: number
   XLSX.utils.book_append_sheet(workbook, detailWs, "Detail Transaksi");
 
   XLSX.writeFile(workbook, `rekap-tiktok-shop-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+export function exportProductSalesRecap(items: OrderItem[]) {
+  if (!items.length) throw new Error("Belum ada data produk untuk diekspor.");
+  const summary = summarizeOrderItems(items);
+  const products = aggregateProductSales(items);
+  const workbook = XLSX.utils.book_new();
+
+  const summaryRows: (string | number)[][] = [
+    ["REKAP PRODUK TERJUAL"],
+    ["Diekspor", new Date().toLocaleString("id-ID")],
+    [],
+    ["Metrik", "Nilai"],
+    ["Unit selesai", summary.completed],
+    ["Unit retur", summary.returned],
+    ["Unit terjual bersih", summary.netSold],
+    ["Unit dikirim", summary.shipped],
+    ["Unit perlu dikirim", summary.pending],
+    ["Unit dibatalkan", summary.cancelled],
+    ["Pesanan unik", summary.uniqueOrders],
+    ["Produk unik", summary.uniqueProducts],
+    ["SKU unik", summary.uniqueSkus]
+  ];
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+  summarySheet["!cols"] = [{ wch: 25 }, { wch: 22 }];
+  XLSX.utils.book_append_sheet(workbook, summarySheet, "Ringkasan");
+
+  const productRows: (string | number)[][] = [["Produk", "SKU ID", "Variasi", "Qty Selesai", "Qty Retur", "Terjual Bersih", "Dikirim", "Perlu Dikirim", "Dibatalkan"]];
+  products.forEach((product) => {
+    productRows.push([product.summary.productName, "SEMUA SKU", "", product.summary.completed, product.summary.returned, product.summary.netSold, product.summary.shipped, product.summary.pending, product.summary.cancelled]);
+    product.variants.forEach((variant) => {
+      productRows.push([variant.productName, variant.skuId, variant.variation, variant.completed, variant.returned, variant.netSold, variant.shipped, variant.pending, variant.cancelled]);
+    });
+  });
+  const productSheet = XLSX.utils.aoa_to_sheet(productRows);
+  productSheet["!cols"] = [{ wch: 56 }, { wch: 22 }, { wch: 36 }, ...Array.from({ length: 6 }, () => ({ wch: 16 }))];
+  productSheet["!autofilter"] = { ref: `A1:I${productRows.length}` };
+  XLSX.utils.book_append_sheet(workbook, productSheet, "Produk Terjual");
+
+  const detailRows: (string | number | null)[][] = [["Tanggal", "Order ID", "Status", "SKU ID", "Seller SKU", "Produk", "Variasi", "Quantity", "Retur", "Terjual Bersih", "Harga Unit", "Subtotal Setelah Diskon", "Sumber"]];
+  items
+    .slice()
+    .sort((a, b) => a.order_created_at.localeCompare(b.order_created_at))
+    .forEach((item) => {
+      detailRows.push([
+        item.order_created_at,
+        item.order_id,
+        item.order_status,
+        item.sku_id,
+        item.seller_sku,
+        item.product_name,
+        item.variation,
+        item.quantity,
+        item.returned_quantity,
+        item.order_status.toLocaleLowerCase("id-ID") === "selesai" ? Math.max(item.quantity - item.returned_quantity, 0) : 0,
+        item.unit_original_price,
+        item.sku_subtotal_after_discount,
+        item.source_file
+      ]);
+    });
+  const detailSheet = XLSX.utils.aoa_to_sheet(detailRows);
+  detailSheet["!cols"] = [{ wch: 21 }, { wch: 22 }, { wch: 16 }, { wch: 22 }, { wch: 20 }, { wch: 56 }, { wch: 36 }, ...Array.from({ length: 6 }, () => ({ wch: 18 }))];
+  detailSheet["!autofilter"] = { ref: `A1:M${detailRows.length}` };
+  XLSX.utils.book_append_sheet(workbook, detailSheet, "Detail Pesanan");
+
+  XLSX.writeFile(workbook, `rekap-produk-terjual-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
