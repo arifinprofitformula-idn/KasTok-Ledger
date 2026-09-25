@@ -39,7 +39,7 @@ export default function UploadDropzone({ onFiles }: Props) {
       </div>
       <div className="dz-text">
         <strong>Upload laporan TikTok Shop</strong>
-        <span>Otomatis membaca sheet OrderSKUList atau Riwayat penarikan. Bisa upload beberapa file `.xlsx` sekaligus.</span>
+        <span>Otomatis membaca OrderSKUList, Detail pesanan, ringkasan laporan, dan riwayat penarikan. Bisa upload beberapa file `.xlsx` sekaligus.</span>
       </div>
       <button className="btn btn-primary" type="button" onClick={() => inputRef.current?.click()}>
         <Upload size={16} />

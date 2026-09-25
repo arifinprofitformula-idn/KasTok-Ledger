@@ -1,6 +1,7 @@
 export function getAppEnv() {
-  const databaseUrl = process.env.DATABASE_URL;
-  const authSecret = process.env.AUTH_SECRET;
+  const localDevelopment = process.env.NODE_ENV !== "production";
+  const databaseUrl = process.env.DATABASE_URL || (localDevelopment ? "postgresql://postgres@127.0.0.1:5432/kastok_ledger" : undefined);
+  const authSecret = process.env.AUTH_SECRET || (localDevelopment ? "local-kastok-development-secret-change-in-production" : undefined);
 
   return {
     databaseUrl,

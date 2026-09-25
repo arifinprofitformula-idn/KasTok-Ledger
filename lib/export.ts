@@ -5,8 +5,9 @@ import * as XLSX from "xlsx";
 import { groupByPeriod, summarize } from "@/lib/calculations";
 import { splitCashPool } from "@/lib/cash-sharing";
 import { aggregateProductSales, summarizeOrderItems } from "@/lib/order-calculations";
+import type { BusinessReport } from "@/lib/business-calculations";
 import { monthLabel } from "@/lib/format";
-import type { OrderItem, Transaction } from "@/lib/types";
+import type { FinancialEntry, FinancialImport, OrderItem, Transaction } from "@/lib/types";
 
 export function exportImage(element: HTMLElement | null, filename: string, backgroundColor?: string) {
   if (!element) return Promise.reject(new Error("Elemen tidak ditemukan."));
@@ -178,4 +179,48 @@ export function exportProductSalesRecap(items: OrderItem[]) {
   XLSX.utils.book_append_sheet(workbook, detailSheet, "Detail Pesanan");
 
   XLSX.writeFile(workbook, `rekap-produk-terjual-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+export function exportBusinessReport(report: BusinessReport, entries: FinancialEntry[], latest?: FinancialImport) {
+  if (!entries.length) throw new Error("Belum ada detail keuangan untuk diekspor.");
+  const workbook = XLSX.utils.book_new();
+  const summaryRows: (string | number)[][] = [
+    ["LAPORAN PROFITABILITAS BISNIS"],
+    ["Diekspor", new Date().toLocaleString("id-ID")],
+    ["Sumber terakhir", latest?.file_name || "-"],
+    ["Periode", latest ? `${String(latest.period_start || "-").slice(0, 10)} s.d. ${String(latest.period_end || "-").slice(0, 10)}` : "-"],
+    [],
+    ["Metrik", "Nilai"],
+    ["Pendapatan diakui", report.recognizedRevenue],
+    ["Biaya marketplace", report.marketplaceFees],
+    ["Diskon penjual", report.sellerDiscount],
+    ["Diskon platform", report.platformDiscount],
+    ["HPP tercatat", report.hpp],
+    ["Laba kotor", report.grossProfit],
+    ["Laba kontribusi", report.contributionProfit],
+    ["Margin kontribusi", report.contributionMargin ?? 0],
+    ["Penyelesaian bersih", report.settlement],
+    ["Pesanan terhubung", report.linkedOrders],
+    ["Unit belum memiliki HPP", report.missingCostUnits],
+    ["Status laba", report.missingCostUnits ? "SEMENTARA - HPP belum lengkap" : "FINAL berdasarkan data saat ekspor"],
+    ["Selisih rekonsiliasi sumber", latest?.reconciliation_difference || 0]
+  ];
+  const summary = XLSX.utils.aoa_to_sheet(summaryRows);
+  summary["!cols"] = [{ wch: 34 }, { wch: 28 }];
+  XLSX.utils.book_append_sheet(workbook, summary, "Ringkasan");
+
+  const productRows: (string | number)[][] = [["Produk", "SKU ID", "Variasi", "Qty", "Pendapatan", "Diskon Platform", "Biaya Marketplace", "HPP", "Laba Kontribusi", "Margin", "Unit Tanpa HPP", "Jumlah Pesanan"]];
+  report.rows.forEach((row) => productRows.push([row.productName, row.skuId, row.variation, row.quantity, row.revenue, row.platformDiscount, row.marketplaceFees, row.hpp, row.contribution, row.margin ?? 0, row.missingCostUnits, row.orders]));
+  const products = XLSX.utils.aoa_to_sheet(productRows);
+  products["!cols"] = [{ wch: 52 }, { wch: 22 }, { wch: 34 }, ...Array.from({ length: 9 }, () => ({ wch: 18 }))];
+  products["!autofilter"] = { ref: `A1:L${productRows.length}` };
+  XLSX.utils.book_append_sheet(workbook, products, "Margin Produk");
+
+  const financeRows: (string | number | null)[][] = [["Tanggal", "ID Pesanan/Penyesuaian", "Jenis Transaksi", "ID Pesanan Terkait", "Pendapatan", "Biaya", "Penyesuaian", "Penyelesaian", "Sumber Baris"]];
+  entries.forEach((entry) => financeRows.push([entry.order_date, entry.transaction_id, entry.transaction_type, entry.related_order_id, entry.total_revenue, entry.total_fees, entry.adjustment_amount, entry.settlement_amount, entry.source_row]));
+  const finance = XLSX.utils.aoa_to_sheet(financeRows);
+  finance["!cols"] = [{ wch: 14 }, { wch: 25 }, { wch: 50 }, { wch: 25 }, ...Array.from({ length: 5 }, () => ({ wch: 18 }))];
+  finance["!autofilter"] = { ref: `A1:I${financeRows.length}` };
+  XLSX.utils.book_append_sheet(workbook, finance, "Detail Keuangan");
+  XLSX.writeFile(workbook, `laporan-profitabilitas-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }

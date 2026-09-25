@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
+import BusinessReport from "@/components/BusinessReport";
 import LedgerView from "@/components/LedgerView";
 import LogoutButton from "@/components/LogoutButton";
 import PerformanceChart from "@/components/PerformanceChart";
@@ -14,9 +15,11 @@ import { splitCashPool } from "@/lib/cash-sharing";
 import { clearPrintArea, exportMonthlyRecap } from "@/lib/export";
 import { fmt } from "@/lib/format";
 import { summarizeOrderItems } from "@/lib/order-calculations";
+import { buildBusinessReport } from "@/lib/business-calculations";
+import { parseFinancialWorkbook } from "@/lib/financial-parser";
 import { detectWorkbookType, parseOrderWorkbook } from "@/lib/order-parser";
-import { parseFiles } from "@/lib/parser";
-import type { DateFilter, Granularity, OrderImport, OrderItem, ParsedOrderBatch, Transaction } from "@/lib/types";
+import { parseFiles, parseWorkbook } from "@/lib/parser";
+import type { DateFilter, FinancialEntry, FinancialImport, Granularity, OrderImport, OrderItem, OrderItemCostSnapshot, ParsedFinancialBatch, ParsedOrderBatch, SkuCost, Transaction } from "@/lib/types";
 
 type Props = {
   initialTransactions: Transaction[];
@@ -30,7 +33,11 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [orderItems, setOrderItems] = useState<OrderItem[]>(initialOrderItems);
   const [orderImports, setOrderImports] = useState<OrderImport[]>(initialOrderImports);
-  const [activeModule, setActiveModule] = useState<"finance" | "products">(
+  const [financialEntries, setFinancialEntries] = useState<FinancialEntry[]>([]);
+  const [financialImports, setFinancialImports] = useState<FinancialImport[]>([]);
+  const [costs, setCosts] = useState<SkuCost[]>([]);
+  const [costSnapshots, setCostSnapshots] = useState<OrderItemCostSnapshot[]>([]);
+  const [activeModule, setActiveModule] = useState<"finance" | "products" | "business">(
     initialTransactions.length ? "finance" : initialOrderItems.length ? "products" : "finance"
   );
   const [splitYou, setSplitYou] = useState(40);
@@ -49,7 +56,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
 
   useEffect(() => {
     window.addEventListener("afterprint", clearPrintArea);
-    refreshOrders(true).catch((error) => {
+    Promise.all([refreshOrders(true), refreshBusiness()]).catch((error) => {
       setStatus(error instanceof Error ? error.message : "Gagal memuat data pesanan.", "err");
     });
     return () => window.removeEventListener("afterprint", clearPrintArea);
@@ -65,6 +72,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
     return { cashPool, you: shares.yourShare, supplier: shares.supplierShare };
   }, [filteredTransactions, splitYou]);
   const productHero = useMemo(() => summarizeOrderItems(orderItems), [orderItems]);
+  const businessHero = useMemo(() => buildBusinessReport(orderItems, financialEntries, costSnapshots), [orderItems, financialEntries, costSnapshots]);
 
   async function refreshTransactions() {
     const response = await fetch("/api/transactions");
@@ -89,11 +97,33 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
     if (selectProductsWhenFinanceIsEmpty && !initialTransactions.length && nextItems.length) setActiveModule("products");
   }
 
+  async function refreshCosts() {
+    const response = await fetch("/api/costs");
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(data?.error || "Gagal memuat master HPP.");
+    setCosts((data.costs || []) as SkuCost[]);
+    setCostSnapshots((data.snapshots || []) as OrderItemCostSnapshot[]);
+  }
+
+  async function refreshBusiness() {
+    const [financeResponse, costResponse] = await Promise.all([fetch("/api/finance"), fetch("/api/costs")]);
+    const financeData = await financeResponse.json().catch(() => null);
+    const costData = await costResponse.json().catch(() => null);
+    if (!financeResponse.ok) throw new Error(financeData?.error || "Gagal memuat detail laporan keuangan.");
+    if (!costResponse.ok) throw new Error(costData?.error || "Gagal memuat master HPP.");
+    setFinancialEntries((financeData.entries || []) as FinancialEntry[]);
+    setFinancialImports((financeData.imports || []) as FinancialImport[]);
+    setCosts((costData.costs || []) as SkuCost[]);
+    setCostSnapshots((costData.snapshots || []) as OrderItemCostSnapshot[]);
+  }
+
   async function handleFiles(files: File[]) {
     setStatus("Membaca dan memvalidasi file...", "ok");
     const existingKeys = new Set(transactions.map((item) => item.dedupe_key));
     const transactionFiles: File[] = [];
     const orderBatches: ParsedOrderBatch[] = [];
+    const financialBatches: ParsedFinancialBatch[] = [];
+    const financialTransactions: Transaction[] = [];
     const errors: string[] = [];
 
     for (const file of files) {
@@ -105,8 +135,13 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
         const buffer = await file.arrayBuffer();
         const type = detectWorkbookType(buffer);
         if (type === "orders") orderBatches.push(await parseOrderWorkbook(buffer, file.name));
+        else if (type === "financial") {
+          financialBatches.push(await parseFinancialWorkbook(buffer, file.name));
+          const cash = parseWorkbook(buffer, file.name, existingKeys);
+          financialTransactions.push(...cash.transactions);
+        }
         else if (type === "transactions") transactionFiles.push(file);
-        else errors.push(`${file.name}: sheet OrderSKUList atau Riwayat penarikan tidak ditemukan.`);
+        else errors.push(`${file.name}: sheet OrderSKUList, Detail pesanan, atau Riwayat penarikan tidak ditemukan.`);
       } catch (error) {
         errors.push(`${file.name}: ${error instanceof Error ? error.message : "gagal dibaca"}`);
       }
@@ -115,20 +150,39 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
     const parsed = transactionFiles.length
       ? await parseFiles(transactionFiles, existingKeys)
       : { transactions: [] as Transaction[], skipped: 0, errors: [] as string[] };
+    parsed.transactions.push(...financialTransactions);
     errors.push(...parsed.errors);
     const knownFileHashes = new Set(orderImports.map((item) => item.file_hash));
     const pendingOrderBatches = orderBatches.filter((batch) => !knownFileHashes.has(batch.fileHash));
     const knownDuplicateFiles = orderBatches.length - pendingOrderBatches.length;
+    const knownFinanceHashes = new Set(financialImports.map((item) => item.file_hash));
+    const pendingFinancialBatches = financialBatches.filter((batch) => !knownFinanceHashes.has(batch.fileHash));
+    const knownDuplicateFinanceFiles = financialBatches.length - pendingFinancialBatches.length;
 
     if (errors.length) {
       setStatus(errors.join(" · "), "err");
       return;
     }
 
-    if (!parsed.transactions.length && !pendingOrderBatches.length) {
-      const duplicateText = knownDuplicateFiles ? `, ${knownDuplicateFiles} file identik dilewati` : parsed.skipped ? `, ${parsed.skipped} duplikat dilewati` : "";
+    if (!parsed.transactions.length && !pendingOrderBatches.length && !pendingFinancialBatches.length) {
+      const totalDuplicateFiles = knownDuplicateFiles + knownDuplicateFinanceFiles;
+      const duplicateText = totalDuplicateFiles ? `, ${totalDuplicateFiles} file identik dilewati` : parsed.skipped ? `, ${parsed.skipped} duplikat dilewati` : "";
       setStatus(`Tidak ada data baru${duplicateText}.`, "ok");
       return;
+    }
+
+    if (pendingFinancialBatches.length) {
+      const entryCount = pendingFinancialBatches.reduce((sum, batch) => sum + batch.entries.length, 0);
+      const difference = pendingFinancialBatches.reduce((sum, batch) => sum + Math.abs(batch.reconciliationDifference || 0), 0);
+      const confirmed = window.confirm(
+        `Preview laporan keuangan\n\n${entryCount.toLocaleString("id-ID")} baris detail valid\n` +
+        `${difference ? `Peringatan: selisih ringkasan vs detail ${fmt(difference)}\n` : "Ringkasan dan detail seimbang\n"}` +
+        `\nLanjutkan simpan ke database?`
+      );
+      if (!confirmed) {
+        setStatus("Impor dibatalkan. Tidak ada data yang disimpan.", "ok");
+        return;
+      }
     }
 
     if (pendingOrderBatches.length) {
@@ -170,7 +224,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
     }
 
     let savedOrders = 0;
-    let duplicateFiles = knownDuplicateFiles;
+    let duplicateFiles = knownDuplicateFiles + knownDuplicateFinanceFiles;
     for (const batch of pendingOrderBatches) {
       const response = await fetch("/api/orders", {
         method: "POST",
@@ -190,9 +244,28 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
       setActiveModule("products");
     }
 
+    let savedFinancialEntries = 0;
+    for (const batch of pendingFinancialBatches) {
+      const response = await fetch("/api/finance", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(batch)
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        setStatus(`Gagal menyimpan ${batch.fileName}: ${data?.error || "Request gagal."}`, "err");
+        return;
+      }
+      if (data?.duplicate) duplicateFiles += 1;
+      else savedFinancialEntries += Number(data?.processed || 0);
+    }
+    if (pendingFinancialBatches.length) {
+      await refreshBusiness();
+      setActiveModule("business");
+    }
+
     const parts = [];
     if (savedTransactions) parts.push(`${savedTransactions.toLocaleString("id-ID")} transaksi keuangan`);
     if (savedOrders) parts.push(`${savedOrders.toLocaleString("id-ID")} baris pesanan diproses`);
+    if (savedFinancialEntries) parts.push(`${savedFinancialEntries.toLocaleString("id-ID")} detail keuangan diproses`);
     if (duplicateFiles) parts.push(`${duplicateFiles} file identik dilewati`);
     if (parsed.skipped) parts.push(`${parsed.skipped} transaksi duplikat dilewati`);
     setStatus(`Berhasil: ${parts.join(" · ") || "tidak ada perubahan"}.`, "ok");
@@ -222,13 +295,17 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
                 <div className="fig you"><div className="label">Bagian Anda</div><div className="num">{fmt(hero.you)}</div></div>
                 <div className="fig supplier"><div className="label">Bagian Supplier + HPP</div><div className="num">{fmt(hero.supplier)}</div></div>
               </>
-            ) : (
+            ) : activeModule === "products" ? (
               <>
                 <div className="fig"><div className="label">Terjual Bersih</div><div className="num">{productHero.netSold.toLocaleString("id-ID")}</div></div>
                 <div className="fig you"><div className="label">Dalam Proses</div><div className="num">{(productHero.shipped + productHero.pending).toLocaleString("id-ID")}</div></div>
                 <div className="fig supplier"><div className="label">Produk / SKU</div><div className="num">{productHero.uniqueProducts} / {productHero.uniqueSkus}</div></div>
               </>
-            )}
+            ) : <>
+              <div className="fig"><div className="label">Pendapatan Diakui</div><div className="num">{fmt(businessHero.recognizedRevenue)}</div></div>
+              <div className="fig you"><div className="label">Laba Kontribusi</div><div className="num">{businessHero.missingCostUnits ? "Belum lengkap" : fmt(businessHero.contributionProfit)}</div></div>
+              <div className="fig supplier"><div className="label">Cakupan HPP</div><div className="num">{businessHero.costCoverage === null ? "-" : `${Math.round(businessHero.costCoverage * 100)}%`}</div></div>
+            </>}
           </div>
           <LogoutButton />
         </div>
@@ -240,6 +317,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
       <div className="module-tabs">
         <button className={activeModule === "finance" ? "active" : ""} type="button" onClick={() => setActiveModule("finance")}>Rekap Keuangan</button>
         <button className={activeModule === "products" ? "active" : ""} type="button" onClick={() => setActiveModule("products")}>Produk Terjual</button>
+        <button className={activeModule === "business" ? "active" : ""} type="button" onClick={() => setActiveModule("business")}>Laba &amp; HPP</button>
       </div>
 
       {activeModule === "finance" ? (
@@ -263,9 +341,9 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
           <PerformanceChart transactions={filteredTransactions} granularity={granularity} selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} setStatus={setStatus} />
           <LedgerView transactions={filteredTransactions} granularity={granularity} splitYou={splitYou} splitSupplier={splitSupplier} setStatus={setStatus} />
         </>
-      ) : (
+      ) : activeModule === "products" ? (
         <ProductSales items={orderItems} imports={orderImports} setStatus={setStatus} />
-      )}
+      ) : <BusinessReport items={orderItems} entries={financialEntries} imports={financialImports} costs={costs} snapshots={costSnapshots} refreshCosts={refreshCosts} setStatus={setStatus} />}
 
       <div id="printArea" />
       <footer>KasTok Ledger · Dana Bersih Siap Dibagi = Dana Masuk Rekening - Biaya Marketing GMV Pay</footer>

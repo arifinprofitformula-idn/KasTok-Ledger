@@ -30,7 +30,7 @@ async function hashPassword(password) {
 
 loadEnvFile();
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL || "postgresql://postgres@127.0.0.1:5432/kastok_ledger";
 const email = process.env.SUPERADMIN_EMAIL;
 const password = process.env.SUPERADMIN_PASSWORD;
 
@@ -39,8 +39,11 @@ if (!databaseUrl || !email || !password) {
   process.exit(1);
 }
 
-if (password.length < 12) {
-  console.error("SUPERADMIN_PASSWORD must be at least 12 characters.");
+const localDatabase = /(?:127\.0\.0\.1|localhost)(?::\d+)?\//.test(databaseUrl);
+const minimumPasswordLength = localDatabase ? 8 : 12;
+
+if (password.length < minimumPasswordLength) {
+  console.error(`SUPERADMIN_PASSWORD must be at least ${minimumPasswordLength} characters.`);
   process.exit(1);
 }
 
@@ -59,7 +62,7 @@ try {
     [email.trim().toLowerCase(), passwordHash]
   );
 
-  console.log(`Superadmin ready: ${email}`);
+  console.log("Superadmin account is ready.");
 } finally {
   await pool.end();
 }

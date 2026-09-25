@@ -16,10 +16,7 @@ function loadEnvFile() {
 }
 
 loadEnvFile();
-if (!process.env.DATABASE_URL) {
-  console.error("Missing DATABASE_URL in .env.local.");
-  process.exit(1);
-}
+process.env.DATABASE_URL ||= "postgresql://postgres@127.0.0.1:5432/kastok_ledger";
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,

@@ -43,9 +43,10 @@ async function sha256(buffer: ArrayBuffer) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export function detectWorkbookType(buffer: ArrayBuffer): "orders" | "transactions" | "unknown" {
+export function detectWorkbookType(buffer: ArrayBuffer): "orders" | "financial" | "transactions" | "unknown" {
   const workbook = XLSX.read(buffer, { type: "array", bookSheets: true });
   if (workbook.SheetNames.some((name) => name.toLowerCase() === ORDER_SHEET)) return "orders";
+  if (workbook.SheetNames.some((name) => name.toLowerCase().includes("detail pesanan"))) return "financial";
   if (workbook.SheetNames.some((name) => /riwayat penarikan|withdraw/i.test(name))) return "transactions";
   return "unknown";
 }
@@ -114,6 +115,9 @@ export async function parseOrderWorkbook(buffer: ArrayBuffer, filename: string):
       order_date: created.date,
       month_key: created.month,
       unit_original_price: numberOrNull(row[column("SKU Unit Original Price")]),
+      sku_subtotal_before_discount: numberOrNull(row[column("SKU Subtotal Before Discount")]),
+      sku_platform_discount: numberOrNull(row[column("SKU Platform Discount")]),
+      sku_seller_discount: numberOrNull(row[column("SKU Seller Discount")]),
       sku_subtotal_after_discount: numberOrNull(row[column("SKU Subtotal After Discount")]),
       source_file: filename,
       source_row: index + 1,

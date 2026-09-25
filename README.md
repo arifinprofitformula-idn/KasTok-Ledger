@@ -59,6 +59,16 @@ npm run db:migrate
 - Status `Dikirim` dan `Perlu dikirim` ditampilkan sebagai proses; status `Dibatalkan` tidak masuk penjualan final.
 - File identik tidak diimpor ulang. File ekspor yang lebih baru memperbarui status baris pesanan lama berdasarkan Order ID, SKU ID, dan variasi.
 
+## Laporan Profitabilitas dan HPP
+
+- Upload laporan keuangan yang memiliki sheet `Detail pesanan`, `Laporan`, dan `Riwayat penarikan`.
+- Sistem menghubungkan `ID Pesanan/Penyesuaian` ke `Order ID`, menyimpan komponen biaya, dan memperingatkan bila total ringkasan tidak sama dengan detail.
+- Master HPP disimpan per SKU/variasi dan tanggal berlaku. Harga beli, ongkir masuk, penanganan langsung, kemasan, serta biaya langsung lain membentuk total HPP unit.
+- Snapshot HPP diterapkan ke baris pesanan agar perubahan biaya pada periode berikutnya tidak mengubah histori transaksi lama.
+- Halaman `Laba & HPP` menampilkan pendapatan diakui, diskon, biaya marketplace, HPP, laba kotor, laba kontribusi, margin, kualitas pencocokan, serta cakupan HPP.
+
+Untuk pengembangan lokal Laragon, aplikasi menggunakan PostgreSQL `kastok_ledger` pada `127.0.0.1:5432` bila `DATABASE_URL` belum diisi. Environment production tetap wajib memiliki `DATABASE_URL` dan `AUTH_SECRET` sendiri.
+
 ## Deploy
 
 1. Push project ini ke GitHub.

@@ -6,10 +6,13 @@ import type { OrderImport, OrderItem } from "@/lib/types";
 const MAX_ITEMS_PER_FILE = 20_000;
 const INSERT_CHUNK_SIZE = 500;
 
-type OrderItemRow = Omit<OrderItem, "quantity" | "returned_quantity" | "unit_original_price" | "sku_subtotal_after_discount" | "source_row"> & {
+type OrderItemRow = Omit<OrderItem, "quantity" | "returned_quantity" | "unit_original_price" | "sku_subtotal_before_discount" | "sku_platform_discount" | "sku_seller_discount" | "sku_subtotal_after_discount" | "source_row"> & {
   quantity: string | number;
   returned_quantity: string | number;
   unit_original_price: string | number | null;
+  sku_subtotal_before_discount: string | number | null;
+  sku_platform_discount: string | number | null;
+  sku_seller_discount: string | number | null;
   sku_subtotal_after_discount: string | number | null;
   source_row: string | number;
 };
@@ -20,6 +23,9 @@ function mapOrderItem(row: OrderItemRow): OrderItem {
     quantity: Number(row.quantity),
     returned_quantity: Number(row.returned_quantity),
     unit_original_price: row.unit_original_price === null ? null : Number(row.unit_original_price),
+    sku_subtotal_before_discount: row.sku_subtotal_before_discount === null ? null : Number(row.sku_subtotal_before_discount),
+    sku_platform_discount: row.sku_platform_discount === null ? null : Number(row.sku_platform_discount),
+    sku_seller_discount: row.sku_seller_discount === null ? null : Number(row.sku_seller_discount),
     sku_subtotal_after_discount: row.sku_subtotal_after_discount === null ? null : Number(row.sku_subtotal_after_discount),
     source_row: Number(row.source_row)
   };
@@ -56,6 +62,9 @@ function isValidOrderItem(item: Partial<OrderItem>) {
       typeof item.month_key === "string" &&
       /^\d{4}-\d{2}$/.test(item.month_key) &&
       nullableNumber(item.unit_original_price) &&
+      nullableNumber(item.sku_subtotal_before_discount) &&
+      nullableNumber(item.sku_platform_discount) &&
+      nullableNumber(item.sku_seller_discount) &&
       nullableNumber(item.sku_subtotal_after_discount) &&
       boundedText(item.source_file, 500, true) &&
       Number.isInteger(item.source_row) &&
@@ -73,7 +82,8 @@ export async function GET() {
       query<OrderItemRow>(
         `select id, user_id, order_id, sku_id, seller_sku, product_name, variation, quantity,
                 returned_quantity, order_status, order_substatus, order_created_at, order_date,
-                month_key, unit_original_price, sku_subtotal_after_discount, source_file,
+                month_key, unit_original_price, sku_subtotal_before_discount, sku_platform_discount,
+                sku_seller_discount, sku_subtotal_after_discount, source_file,
                 source_row, dedupe_key, updated_at
          from order_items
          where user_id = $1
@@ -141,7 +151,7 @@ export async function POST(request: Request) {
       const chunk = items.slice(start, start + INSERT_CHUNK_SIZE);
       const values: unknown[] = [];
       const placeholders = chunk.map((item, index) => {
-        const offset = index * 20;
+        const offset = index * 23;
         values.push(
           user.id,
           importId,
@@ -158,20 +168,24 @@ export async function POST(request: Request) {
           item.order_date,
           item.month_key,
           item.unit_original_price,
+          item.sku_subtotal_before_discount,
+          item.sku_platform_discount,
+          item.sku_seller_discount,
           item.sku_subtotal_after_discount,
           fileName,
           item.source_row,
           item.dedupe_key,
           new Date()
         );
-        return `(${Array.from({ length: 20 }, (_, column) => `$${offset + column + 1}`).join(", ")})`;
+        return `(${Array.from({ length: 23 }, (_, column) => `$${offset + column + 1}`).join(", ")})`;
       });
 
       await client.query(
         `insert into order_items
           (user_id, import_id, order_id, sku_id, seller_sku, product_name, variation,
            quantity, returned_quantity, order_status, order_substatus, order_created_at,
-           order_date, month_key, unit_original_price, sku_subtotal_after_discount,
+           order_date, month_key, unit_original_price, sku_subtotal_before_discount,
+           sku_platform_discount, sku_seller_discount, sku_subtotal_after_discount,
            source_file, source_row, dedupe_key, updated_at)
          values ${placeholders.join(", ")}
          on conflict (user_id, dedupe_key) do update set
@@ -186,6 +200,9 @@ export async function POST(request: Request) {
            order_date = excluded.order_date,
            month_key = excluded.month_key,
            unit_original_price = excluded.unit_original_price,
+           sku_subtotal_before_discount = excluded.sku_subtotal_before_discount,
+           sku_platform_discount = excluded.sku_platform_discount,
+           sku_seller_discount = excluded.sku_seller_discount,
            sku_subtotal_after_discount = excluded.sku_subtotal_after_discount,
            source_file = excluded.source_file,
            source_row = excluded.source_row,
@@ -193,6 +210,25 @@ export async function POST(request: Request) {
         values
       );
     }
+
+    await client.query(
+      `insert into order_item_cost_snapshots (order_item_id, cost_history_id, total_unit_cost)
+       select oi.id, cost.id, cost.total_unit_cost
+       from order_items oi
+       join lateral (
+         select c.id, c.total_unit_cost
+         from sku_cost_history c
+         where c.user_id = oi.user_id
+           and c.sku_id = oi.sku_id
+           and c.variation = oi.variation
+           and c.effective_from <= oi.order_date
+         order by c.effective_from desc
+         limit 1
+       ) cost on true
+       where oi.user_id = $1
+       on conflict (order_item_id) do nothing`,
+      [user.id]
+    );
 
     await client.query("commit");
     return NextResponse.json({ ok: true, duplicate: false, processed: items.length });
