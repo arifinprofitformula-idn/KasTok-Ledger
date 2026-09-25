@@ -46,7 +46,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [filter, setFilter] = useState<DateFilter>({ from: "", to: "" });
   const [status, setStatusState] = useState<{ text: string; kind?: "ok" | "err" }>({
-    text: initialError ? `Gagal membaca database. Jalankan npm run db:migrate dan periksa konfigurasi. Detail: ${initialError}` : "",
+    text: initialError ? `Data belum siap dibuka. Periksa koneksi penyimpanan lokal, lalu coba muat ulang. Detail: ${initialError}` : "",
     kind: initialError ? "err" : undefined
   });
 
@@ -77,7 +77,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
   async function refreshTransactions() {
     const response = await fetch("/api/transactions");
     if (!response.ok) {
-      setStatus("Gagal memuat ulang data dari database.", "err");
+      setStatus("Gagal memuat ulang data. Coba muat ulang halaman.", "err");
       return;
     }
     const data = await response.json();
@@ -88,7 +88,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
     const response = await fetch("/api/orders");
     if (!response.ok) {
       const data = await response.json().catch(() => null);
-      throw new Error(data?.error || "Gagal memuat data pesanan. Jalankan npm run db:migrate.");
+      throw new Error(data?.error || "Gagal memuat laporan pesanan. Coba muat ulang halaman.");
     }
     const data = await response.json();
     const nextItems = (data.items || []) as OrderItem[];
@@ -100,7 +100,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
   async function refreshCosts() {
     const response = await fetch("/api/costs");
     const data = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(data?.error || "Gagal memuat master HPP.");
+    if (!response.ok) throw new Error(data?.error || "Gagal memuat daftar modal produk.");
     setCosts((data.costs || []) as SkuCost[]);
     setCostSnapshots((data.snapshots || []) as OrderItemCostSnapshot[]);
   }
@@ -109,8 +109,8 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
     const [financeResponse, costResponse] = await Promise.all([fetch("/api/finance"), fetch("/api/costs")]);
     const financeData = await financeResponse.json().catch(() => null);
     const costData = await costResponse.json().catch(() => null);
-    if (!financeResponse.ok) throw new Error(financeData?.error || "Gagal memuat detail laporan keuangan.");
-    if (!costResponse.ok) throw new Error(costData?.error || "Gagal memuat master HPP.");
+    if (!financeResponse.ok) throw new Error(financeData?.error || "Gagal memuat rincian pembayaran.");
+    if (!costResponse.ok) throw new Error(costData?.error || "Gagal memuat daftar modal produk.");
     setFinancialEntries((financeData.entries || []) as FinancialEntry[]);
     setFinancialImports((financeData.imports || []) as FinancialImport[]);
     setCosts((costData.costs || []) as SkuCost[]);
@@ -118,7 +118,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
   }
 
   async function handleFiles(files: File[]) {
-    setStatus("Membaca dan memvalidasi file...", "ok");
+    setStatus("Membaca laporan dan mengecek isinya...", "ok");
     const existingKeys = new Set(transactions.map((item) => item.dedupe_key));
     const transactionFiles: File[] = [];
     const orderBatches: ParsedOrderBatch[] = [];
@@ -141,7 +141,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
           financialTransactions.push(...cash.transactions);
         }
         else if (type === "transactions") transactionFiles.push(file);
-        else errors.push(`${file.name}: sheet OrderSKUList, Detail pesanan, atau Riwayat penarikan tidak ditemukan.`);
+        else errors.push(`${file.name}: format laporan belum dikenali. Upload laporan pesanan, pembayaran, atau penarikan dari TikTok Shop.`);
       } catch (error) {
         errors.push(`${file.name}: ${error instanceof Error ? error.message : "gagal dibaca"}`);
       }
@@ -166,7 +166,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
 
     if (!parsed.transactions.length && !pendingOrderBatches.length && !pendingFinancialBatches.length) {
       const totalDuplicateFiles = knownDuplicateFiles + knownDuplicateFinanceFiles;
-      const duplicateText = totalDuplicateFiles ? `, ${totalDuplicateFiles} file identik dilewati` : parsed.skipped ? `, ${parsed.skipped} duplikat dilewati` : "";
+      const duplicateText = totalDuplicateFiles ? `, ${totalDuplicateFiles} laporan yang sama dilewati` : parsed.skipped ? `, ${parsed.skipped} catatan ganda dilewati` : "";
       setStatus(`Tidak ada data baru${duplicateText}.`, "ok");
       return;
     }
@@ -175,12 +175,12 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
       const entryCount = pendingFinancialBatches.reduce((sum, batch) => sum + batch.entries.length, 0);
       const difference = pendingFinancialBatches.reduce((sum, batch) => sum + Math.abs(batch.reconciliationDifference || 0), 0);
       const confirmed = window.confirm(
-        `Preview laporan keuangan\n\n${entryCount.toLocaleString("id-ID")} baris detail valid\n` +
-        `${difference ? `Peringatan: selisih ringkasan vs detail ${fmt(difference)}\n` : "Ringkasan dan detail seimbang\n"}` +
-        `\nLanjutkan simpan ke database?`
+        `Ringkasan laporan pembayaran\n\n${entryCount.toLocaleString("id-ID")} rincian pembayaran terbaca\n` +
+        `${difference ? `Catatan: ada selisih ${fmt(difference)} antara ringkasan dan rincian\n` : "Ringkasan dan rincian sudah sesuai\n"}` +
+        `\nSimpan laporan ini?`
       );
       if (!confirmed) {
-        setStatus("Impor dibatalkan. Tidak ada data yang disimpan.", "ok");
+        setStatus("Upload dibatalkan. Tidak ada data yang disimpan.", "ok");
         return;
       }
     }
@@ -192,15 +192,15 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
       const updates = previewItems.filter((item) => currentKeys.has(item.dedupe_key)).length;
       const newRows = previewItems.length - updates;
       const confirmed = window.confirm(
-        `Preview laporan produk\n\n` +
-          `${previewItems.length.toLocaleString("id-ID")} baris valid\n` +
-          `${newRows.toLocaleString("id-ID")} baris baru\n` +
-          `${updates.toLocaleString("id-ID")} baris akan diperbarui\n` +
+        `Ringkasan laporan produk\n\n` +
+          `${previewItems.length.toLocaleString("id-ID")} rincian produk terbaca\n` +
+          `${newRows.toLocaleString("id-ID")} data baru\n` +
+          `${updates.toLocaleString("id-ID")} data lama akan diperbarui\n` +
           `${preview.netSold.toLocaleString("id-ID")} unit terjual bersih\n\n` +
-          `Lanjutkan simpan ke database?`
+          `Simpan laporan ini?`
       );
       if (!confirmed) {
-        setStatus("Impor dibatalkan. Tidak ada data yang disimpan.", "ok");
+        setStatus("Upload dibatalkan. Tidak ada data yang disimpan.", "ok");
         return;
       }
     }
@@ -215,7 +215,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        setStatus(`Gagal menyimpan transaksi: ${data?.error || "Request gagal."}`, "err");
+        setStatus(`Gagal menyimpan data penarikan: ${data?.error || "Coba ulangi beberapa saat lagi."}`, "err");
         return;
       }
       savedTransactions = parsed.transactions.length;
@@ -233,7 +233,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
-        setStatus(`Gagal menyimpan ${batch.fileName}: ${data?.error || "Request gagal."}`, "err");
+        setStatus(`Gagal menyimpan ${batch.fileName}: ${data?.error || "Coba ulangi beberapa saat lagi."}`, "err");
         return;
       }
       if (data?.duplicate) duplicateFiles += 1;
@@ -251,7 +251,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
       });
       const data = await response.json().catch(() => null);
       if (!response.ok) {
-        setStatus(`Gagal menyimpan ${batch.fileName}: ${data?.error || "Request gagal."}`, "err");
+        setStatus(`Gagal menyimpan ${batch.fileName}: ${data?.error || "Coba ulangi beberapa saat lagi."}`, "err");
         return;
       }
       if (data?.duplicate) duplicateFiles += 1;
@@ -263,11 +263,11 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
     }
 
     const parts = [];
-    if (savedTransactions) parts.push(`${savedTransactions.toLocaleString("id-ID")} transaksi keuangan`);
-    if (savedOrders) parts.push(`${savedOrders.toLocaleString("id-ID")} baris pesanan diproses`);
-    if (savedFinancialEntries) parts.push(`${savedFinancialEntries.toLocaleString("id-ID")} detail keuangan diproses`);
-    if (duplicateFiles) parts.push(`${duplicateFiles} file identik dilewati`);
-    if (parsed.skipped) parts.push(`${parsed.skipped} transaksi duplikat dilewati`);
+    if (savedTransactions) parts.push(`${savedTransactions.toLocaleString("id-ID")} catatan penarikan tersimpan`);
+    if (savedOrders) parts.push(`${savedOrders.toLocaleString("id-ID")} rincian produk tersimpan`);
+    if (savedFinancialEntries) parts.push(`${savedFinancialEntries.toLocaleString("id-ID")} rincian pembayaran tersimpan`);
+    if (duplicateFiles) parts.push(`${duplicateFiles} laporan yang sama dilewati`);
+    if (parsed.skipped) parts.push(`${parsed.skipped} catatan ganda dilewati`);
     setStatus(`Berhasil: ${parts.join(" · ") || "tidak ada perubahan"}.`, "ok");
   }
 
@@ -293,18 +293,18 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
               <>
                 <div className="fig"><div className="label">Dana Bersih Siap Dibagi</div><div className="num">{fmt(hero.cashPool)}</div></div>
                 <div className="fig you"><div className="label">Bagian Anda</div><div className="num">{fmt(hero.you)}</div></div>
-                <div className="fig supplier"><div className="label">Bagian Supplier + HPP</div><div className="num">{fmt(hero.supplier)}</div></div>
+                <div className="fig supplier"><div className="label">Bagian Supplier + Modal</div><div className="num">{fmt(hero.supplier)}</div></div>
               </>
             ) : activeModule === "products" ? (
               <>
                 <div className="fig"><div className="label">Terjual Bersih</div><div className="num">{productHero.netSold.toLocaleString("id-ID")}</div></div>
                 <div className="fig you"><div className="label">Dalam Proses</div><div className="num">{(productHero.shipped + productHero.pending).toLocaleString("id-ID")}</div></div>
-                <div className="fig supplier"><div className="label">Produk / SKU</div><div className="num">{productHero.uniqueProducts} / {productHero.uniqueSkus}</div></div>
+                <div className="fig supplier"><div className="label">Produk / Varian</div><div className="num">{productHero.uniqueProducts} / {productHero.uniqueSkus}</div></div>
               </>
             ) : <>
               <div className="fig"><div className="label">Pendapatan Diakui</div><div className="num">{fmt(businessHero.recognizedRevenue)}</div></div>
-              <div className="fig you"><div className="label">Laba Kontribusi</div><div className="num">{businessHero.missingCostUnits ? "Belum lengkap" : fmt(businessHero.contributionProfit)}</div></div>
-              <div className="fig supplier"><div className="label">Cakupan HPP</div><div className="num">{businessHero.costCoverage === null ? "-" : `${Math.round(businessHero.costCoverage * 100)}%`}</div></div>
+              <div className="fig you"><div className="label">Laba Produk</div><div className="num">{businessHero.missingCostUnits ? "Belum lengkap" : fmt(businessHero.contributionProfit)}</div></div>
+              <div className="fig supplier"><div className="label">Kelengkapan Modal</div><div className="num">{businessHero.costCoverage === null ? "-" : `${Math.round(businessHero.costCoverage * 100)}%`}</div></div>
             </>}
           </div>
           <LogoutButton />
@@ -315,9 +315,9 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
       <div className={`status ${status.kind || ""}`}>{status.text}</div>
 
       <div className="module-tabs">
-        <button className={activeModule === "finance" ? "active" : ""} type="button" onClick={() => setActiveModule("finance")}>Rekap Keuangan</button>
+        <button className={activeModule === "finance" ? "active" : ""} type="button" onClick={() => setActiveModule("finance")}>Bagi Hasil</button>
         <button className={activeModule === "products" ? "active" : ""} type="button" onClick={() => setActiveModule("products")}>Produk Terjual</button>
-        <button className={activeModule === "business" ? "active" : ""} type="button" onClick={() => setActiveModule("business")}>Laba &amp; HPP</button>
+        <button className={activeModule === "business" ? "active" : ""} type="button" onClick={() => setActiveModule("business")}>Laba Produk</button>
       </div>
 
       {activeModule === "finance" ? (
@@ -336,7 +336,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
             <button className="btn btn-ghost" type="button" onClick={() => {
               try { exportMonthlyRecap(filteredTransactions, splitYou, splitSupplier); }
               catch (error) { setStatus(error instanceof Error ? error.message : "Gagal mengekspor rekap.", "err"); }
-            }}><Download size={16} /> Unduh Rekap Bulanan (.xlsx)</button>
+            }}><Download size={16} /> Unduh Rekap Bagi Hasil</button>
           </div>
           <PerformanceChart transactions={filteredTransactions} granularity={granularity} selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} setStatus={setStatus} />
           <LedgerView transactions={filteredTransactions} granularity={granularity} splitYou={splitYou} splitSupplier={splitSupplier} setStatus={setStatus} />
@@ -346,7 +346,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
       ) : <BusinessReport items={orderItems} entries={financialEntries} imports={financialImports} costs={costs} snapshots={costSnapshots} refreshCosts={refreshCosts} setStatus={setStatus} />}
 
       <div id="printArea" />
-      <footer>KasTok Ledger · Dana Bersih Siap Dibagi = Dana Masuk Rekening - Biaya Marketing GMV Pay</footer>
+      <footer>KasTok Ledger · Dana bersih dihitung dari dana masuk rekening dikurangi biaya promosi marketplace.</footer>
     </main>
   );
 }

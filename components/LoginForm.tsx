@@ -60,7 +60,7 @@ export default function LoginForm({ disabled = false }: Props) {
       </label>
       <button className="btn btn-primary login-submit" type="submit" disabled={loading || disabled}>
         <LogIn size={17} />
-        {loading ? "Masuk..." : "Masuk ke Dashboard"}
+        {loading ? "Masuk..." : "Masuk ke Aplikasi"}
       </button>
       {status ? <p className="status err">{status}</p> : null}
     </form>

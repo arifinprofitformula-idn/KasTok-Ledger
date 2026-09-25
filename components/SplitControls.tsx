@@ -34,7 +34,7 @@ export default function SplitControls({ splitYou, splitSupplier, setSplitYou, se
         </div>
         <span className="eq">/</span>
         <div className="split-field">
-          <label>Bagian Supplier + HPP</label>
+          <label>Bagian Supplier + Modal</label>
           <input
             type="number"
             min="0"

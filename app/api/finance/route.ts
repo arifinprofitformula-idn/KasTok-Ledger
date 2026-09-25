@@ -46,7 +46,7 @@ function numeric<T extends Record<string, unknown>>(row: T, keys: string[]) {
 
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sesi login sudah berakhir. Silakan login ulang." }, { status: 401 });
   try {
     const [imports, entries, components] = await Promise.all([
       query<FinancialImport>(
@@ -83,19 +83,19 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Finance data load failed", error);
-    return NextResponse.json({ error: "Tabel laporan keuangan belum siap. Jalankan npm run db:migrate." }, { status: 500 });
+    return NextResponse.json({ error: "Penyimpanan laporan pembayaran belum siap. Periksa pengaturan aplikasi." }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sesi login sudah berakhir. Silakan login ulang." }, { status: 401 });
   const body = await request.json().catch(() => null);
   const entries = Array.isArray(body?.entries) ? body.entries as Partial<FinancialEntry>[] : [];
   if (!validText(body?.fileName, 500, true) || !/^[a-f0-9]{64}$/.test(body?.fileHash || "") ||
       !entries.length || entries.length > MAX_ENTRIES || entries.some((entry) => !isValidEntry(entry)) ||
       !validDate(body?.periodStart ?? null) || !validDate(body?.periodEnd ?? null)) {
-    return NextResponse.json({ error: "Payload laporan keuangan tidak valid." }, { status: 400 });
+    return NextResponse.json({ error: "Isi laporan pembayaran tidak valid atau belum lengkap." }, { status: 400 });
   }
   const client = await getPool().connect();
   try {

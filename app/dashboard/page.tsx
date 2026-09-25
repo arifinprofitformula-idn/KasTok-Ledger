@@ -29,7 +29,7 @@ export default async function DashboardPage() {
     );
     data = rows.map((row) => ({ ...row, amount: Number(row.amount) }));
   } catch (error) {
-    initialError = error instanceof Error ? error.message : "Gagal membaca database.";
+    initialError = error instanceof Error ? error.message : "Gagal membaca data tersimpan.";
   }
 
   return (

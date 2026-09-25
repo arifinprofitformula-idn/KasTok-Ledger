@@ -85,7 +85,7 @@ export default function PerformanceChart({ transactions, granularity, selectedMo
         <div>
           <h2>Grafik Pencapaian</h2>
           <div className="sub">
-            TREN DANA BERSIH SIAP DIBAGI · TAMPILAN {granName(granularity).toUpperCase()} · {monthPart}
+            PERKEMBANGAN DANA BERSIH · TAMPILAN {granName(granularity).toUpperCase()} · {monthPart}
           </div>
         </div>
         <div className="page-head-right">

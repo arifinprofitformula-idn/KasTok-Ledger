@@ -18,7 +18,7 @@ export default function LoginPage() {
             <p className="login-copy">Rekap pendapatan TikTok Shop yang rapi, aman, dan siap dibawa ke Vercel.</p>
           </div>
         </div>
-        {!envConfigured ? <p className="status err">Konfigurasi database belum lengkap. Isi `DATABASE_URL` dan `AUTH_SECRET`, lalu redeploy.</p> : null}
+        {!envConfigured ? <p className="status err">Pengaturan penyimpanan data belum lengkap. Periksa konfigurasi aplikasi sebelum login.</p> : null}
         <LoginForm disabled={!envConfigured} />
       </section>
     </main>

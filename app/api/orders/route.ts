@@ -75,7 +75,7 @@ function isValidOrderItem(item: Partial<OrderItem>) {
 
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sesi login sudah berakhir. Silakan login ulang." }, { status: 401 });
 
   try {
     const [itemsResult, importsResult] = await Promise.all([
@@ -103,13 +103,13 @@ export async function GET() {
     return NextResponse.json({ items: itemsResult.rows.map(mapOrderItem), imports: importsResult.rows });
   } catch (error) {
     console.error("Order data load failed", error);
-    return NextResponse.json({ error: "Tabel pesanan belum siap. Jalankan npm run db:migrate." }, { status: 500 });
+    return NextResponse.json({ error: "Penyimpanan laporan pesanan belum siap. Periksa pengaturan aplikasi." }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sesi login sudah berakhir. Silakan login ulang." }, { status: 401 });
 
   const body = await request.json().catch(() => null);
   const fileName = body?.fileName;
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
     items.length > MAX_ITEMS_PER_FILE ||
     items.some((item) => !isValidOrderItem(item))
   ) {
-    return NextResponse.json({ error: "Payload laporan pesanan tidak valid." }, { status: 400 });
+    return NextResponse.json({ error: "Isi laporan pesanan tidak valid atau belum lengkap." }, { status: 400 });
   }
 
   const client = await getPool().connect();

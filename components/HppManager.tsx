@@ -47,35 +47,35 @@ export default function HppManager({ items, costs, onChanged, setStatus }: Props
   }
 
   async function save() {
-    if (!selectedItem) return setStatus("Pilih SKU/variasi untuk menyimpan HPP.", "err");
+    if (!selectedItem) return setStatus("Pilih produk terlebih dahulu untuk menyimpan modal.", "err");
     setSaving(true);
     try {
       const response = await fetch("/api/costs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
         sku_id: selectedItem.sku_id, variation: selectedItem.variation, effective_from: effectiveFrom, ...fields, supplier, notes
       }) });
       const data = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(data?.error || "Gagal menyimpan HPP.");
+      if (!response.ok) throw new Error(data?.error || "Gagal menyimpan modal produk.");
       await onChanged();
-      setStatus(`HPP ${selectedItem.product_name} tersimpan: ${fmt(total)} per unit.`, "ok");
+      setStatus(`Modal ${selectedItem.product_name} tersimpan: ${fmt(total)} per unit.`, "ok");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Gagal menyimpan HPP.", "err");
+      setStatus(error instanceof Error ? error.message : "Gagal menyimpan modal produk.", "err");
     } finally { setSaving(false); }
   }
 
   async function remove(id: string) {
-    if (!window.confirm("Hapus histori HPP ini? Data yang sudah dipakai sebagai snapshot mungkin tidak dapat dihapus.")) return;
+    if (!window.confirm("Hapus riwayat modal produk ini? Data yang sudah dipakai di laporan lama mungkin tetap tersimpan.")) return;
     const response = await fetch(`/api/costs?id=${encodeURIComponent(id)}`, { method: "DELETE" });
     const data = await response.json().catch(() => null);
-    if (!response.ok) return setStatus(data?.error || "Gagal menghapus HPP.", "err");
+    if (!response.ok) return setStatus(data?.error || "Gagal menghapus modal produk.", "err");
     await onChanged();
-    setStatus("Histori HPP dihapus.", "ok");
+    setStatus("Riwayat modal produk dihapus.", "ok");
   }
 
   return (
     <details className="hpp-manager">
-      <summary>Master HPP per SKU/variasi ({costs.length} histori)</summary>
+      <summary>Modal produk per varian ({costs.length} riwayat)</summary>
       <div className="hpp-form">
-        <label className="wide">Produk / SKU<select value={selected} onChange={(event) => selectVariant(event.target.value)}>
+        <label className="wide">Produk / Varian<select value={selected} onChange={(event) => selectVariant(event.target.value)}>
           <option value="">Pilih produk...</option>
           {variants.map((item) => <option key={`${item.sku_id}|${item.variation}`} value={`${item.sku_id}|${item.variation}`}>{item.product_name} · {item.variation || "Tanpa variasi"} · {item.sku_id}</option>)}
         </select></label>
@@ -85,10 +85,10 @@ export default function HppManager({ items, costs, onChanged, setStatus }: Props
         ))}
         <label>Supplier<input value={supplier} onChange={(event) => setSupplier(event.target.value)} /></label>
         <label className="wide">Catatan<input value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
-        <div className="hpp-total"><span>Total HPP/unit</span><strong>{fmt(total)}</strong></div>
-        <button className="btn btn-primary" type="button" disabled={saving} onClick={save}><Save size={15} /> {saving ? "Menyimpan..." : "Simpan HPP"}</button>
+        <div className="hpp-total"><span>Total modal per unit</span><strong>{fmt(total)}</strong></div>
+        <button className="btn btn-primary" type="button" disabled={saving} onClick={save}><Save size={15} /> {saving ? "Menyimpan..." : "Simpan Modal"}</button>
       </div>
-      {costs.length ? <div className="profit-table-wrap"><table className="profit-table compact"><thead><tr><th>SKU / Variasi</th><th>Berlaku</th><th>Harga Beli</th><th>Total HPP</th><th>Supplier</th><th /></tr></thead><tbody>
+      {costs.length ? <div className="profit-table-wrap"><table className="profit-table compact"><thead><tr><th>Kode / Variasi</th><th>Berlaku</th><th>Harga Beli</th><th>Total Modal</th><th>Supplier</th><th /></tr></thead><tbody>
         {costs.map((cost) => <tr key={cost.id}><td>{cost.sku_id}<small>{cost.variation || "Tanpa variasi"}</small></td><td>{String(cost.effective_from).slice(0, 10)}</td><td>{fmt(cost.purchase_cost)}</td><td>{fmt(cost.total_unit_cost)}</td><td>{cost.supplier || "-"}</td><td><button className="icon-btn" type="button" title="Hapus" onClick={() => remove(cost.id)}><Trash2 size={14} /></button></td></tr>)}
       </tbody></table></div> : null}
     </details>

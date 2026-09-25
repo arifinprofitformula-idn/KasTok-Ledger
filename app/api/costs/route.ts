@@ -17,7 +17,7 @@ function mapNumbers<T extends Record<string, unknown>>(row: T, keys: string[]) {
 
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sesi login sudah berakhir. Silakan login ulang." }, { status: 401 });
   try {
     const [costs, snapshots] = await Promise.all([
       query<SkuCost>(`select * from sku_cost_history where user_id = $1 order by sku_id, variation, effective_from desc`, [user.id]),
@@ -33,20 +33,20 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Cost data load failed", error);
-    return NextResponse.json({ error: "Tabel HPP belum siap. Jalankan npm run db:migrate." }, { status: 500 });
+    return NextResponse.json({ error: "Penyimpanan modal produk belum siap. Periksa pengaturan aplikasi." }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sesi login sudah berakhir. Silakan login ulang." }, { status: 401 });
   const body = await request.json().catch(() => null);
   const skuId = typeof body?.sku_id === "string" ? body.sku_id.trim() : "";
   const variation = typeof body?.variation === "string" ? body.variation.trim() : "";
   const effectiveFrom = typeof body?.effective_from === "string" ? body.effective_from : "";
   const values = COST_FIELDS.map((field) => number(body?.[field]));
   if (!skuId || skuId.length > 64 || variation.length > 500 || !/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom) || values.some((value) => value === null)) {
-    return NextResponse.json({ error: "Data master HPP tidak valid." }, { status: 400 });
+    return NextResponse.json({ error: "Data modal produk belum lengkap atau tidak valid." }, { status: 400 });
   }
   const total = (values as number[]).reduce((sum, value) => sum + value, 0);
   const supplier = typeof body?.supplier === "string" ? body.supplier.trim().slice(0, 500) : "";
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   } catch (error) {
     await client.query("rollback").catch(() => undefined);
     console.error("Cost save failed", error);
-    return NextResponse.json({ error: "Gagal menyimpan master HPP." }, { status: 500 });
+    return NextResponse.json({ error: "Gagal menyimpan modal produk." }, { status: 500 });
   } finally {
     client.release();
   }
@@ -95,13 +95,13 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sesi login sudah berakhir. Silakan login ulang." }, { status: 401 });
   const id = new URL(request.url).searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "ID HPP wajib diisi." }, { status: 400 });
+  if (!id) return NextResponse.json({ error: "Pilih riwayat modal yang ingin dihapus." }, { status: 400 });
   try {
     await query("delete from sku_cost_history where id=$1 and user_id=$2", [id, user.id]);
     return NextResponse.json({ ok: true });
   } catch {
-    return NextResponse.json({ error: "HPP sudah dipakai sebagai snapshot dan tidak dapat dihapus." }, { status: 409 });
+    return NextResponse.json({ error: "Modal ini sudah dipakai di laporan lama dan tidak dapat dihapus." }, { status: 409 });
   }
 }

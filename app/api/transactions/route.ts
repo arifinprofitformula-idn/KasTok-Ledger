@@ -29,7 +29,7 @@ function isValidTransaction(item: Partial<Transaction>) {
 
 export async function GET() {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sesi login sudah berakhir. Silakan login ulang." }, { status: 401 });
 
   const { rows } = await query<TransactionRow>(
     `select id, user_id, reference_id, dedupe_key, type, transaction_date, date_raw, month_key, amount, source_file, created_at
@@ -44,13 +44,13 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Sesi login sudah berakhir. Silakan login ulang." }, { status: 401 });
 
   const body = await request.json().catch(() => null);
   const transactions = Array.isArray(body?.transactions) ? body.transactions as Partial<Transaction>[] : [];
 
   if (!transactions.length || transactions.some((item) => !isValidTransaction(item))) {
-    return NextResponse.json({ error: "Payload transaksi tidak valid." }, { status: 400 });
+    return NextResponse.json({ error: "Isi laporan penarikan tidak valid atau belum lengkap." }, { status: 400 });
   }
 
   const values: unknown[] = [];

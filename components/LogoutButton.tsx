@@ -15,7 +15,7 @@ export default function LogoutButton() {
   return (
     <button className="btn btn-ghost" onClick={logout} type="button">
       <LogOut size={16} />
-      Logout
+      Keluar
     </button>
   );
 }

@@ -16,6 +16,12 @@ type Props = {
   setStatus: (value: string, kind?: "ok" | "err") => void;
 };
 
+function transactionLabel(type: Transaction["type"]) {
+  if (type === "Withdrawal") return "Dana masuk rekening";
+  if (type === "GMV Pay Deduction") return "Biaya promosi marketplace";
+  return "Pendapatan marketplace";
+}
+
 export default function LedgerView({ transactions, granularity, splitYou, splitSupplier, setStatus }: Props) {
   const grouped = useMemo(() => groupByPeriod(granularity, transactions), [transactions, granularity]);
   const keys = Object.keys(grouped).sort().reverse();
@@ -31,8 +37,8 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
         </div>
         <div className="page">
           <div className="page-empty">
-            <h3>Halaman ledger masih kosong</h3>
-            <p>Upload file laporan income TikTok Shop untuk melihat rekap di sini.</p>
+            <h3>Belum ada rekap bagi hasil</h3>
+            <p>Upload laporan penarikan TikTok Shop untuk melihat pembagian dana di sini.</p>
           </div>
         </div>
       </section>
@@ -87,7 +93,7 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
         <table className="rows">
           <tbody>
             <tr>
-              <td className="rlabel">Dana Masuk Rekening (Withdrawal)</td>
+              <td className="rlabel">Dana Masuk Rekening</td>
               <td className="ramt pos">{fmtSigned(summary.withdrawal)}</td>
             </tr>
             <tr>
@@ -95,7 +101,7 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
               <td className="ramt neg">{fmtSigned(-summary.gmv)}</td>
             </tr>
             <tr>
-              <td className="rlabel">Pendapatan Tercatat Marketplace (informasi)</td>
+              <td className="rlabel">Pendapatan Tercatat di Marketplace</td>
               <td className="ramt pos">{fmtSigned(summary.earnings)}</td>
             </tr>
             <tr className="total">
@@ -111,18 +117,18 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
             <div className="amt">{fmt(shares.yourShare)}</div>
           </div>
           <div className="split-card supplier">
-            <div className="pct">BAGIAN SUPPLIER + HPP · {splitSupplier}%</div>
+            <div className="pct">BAGIAN SUPPLIER + MODAL · {splitSupplier}%</div>
             <div className="amt">{fmt(shares.supplierShare)}</div>
           </div>
         </div>
 
         <details>
-          <summary>Lihat rincian {list.length} transaksi</summary>
+          <summary>Lihat rincian {list.length} catatan dana</summary>
           <table className="detail-table">
             <thead>
               <tr>
                 <th>Tanggal</th>
-                <th>Jenis</th>
+                <th>Keterangan</th>
                 <th style={{ textAlign: "right" }}>Nominal</th>
               </tr>
             </thead>
@@ -131,7 +137,7 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
                 <tr key={transaction.dedupe_key}>
                   <td>{transaction.date_raw}</td>
                   <td>
-                    <span className={`badge ${transaction.type === "Withdrawal" ? "wd" : transaction.type === "GMV Pay Deduction" ? "gmv" : "earn"}`}>{transaction.type}</span>
+                    <span className={`badge ${transaction.type === "Withdrawal" ? "wd" : transaction.type === "GMV Pay Deduction" ? "gmv" : "earn"}`}>{transactionLabel(transaction.type)}</span>
                   </td>
                   <td className={`amt ${transaction.amount < 0 ? "neg" : "pos"}`}>{fmtSigned(transaction.amount)}</td>
                 </tr>

@@ -40,9 +40,9 @@ export default function ProductSales({ items, imports, setStatus }: Props) {
     <section className="product-sales">
       <div className="product-head">
         <div>
-          <span className="eyebrow">OrderSKUList</span>
+          <span className="eyebrow">Laporan pesanan</span>
           <h2>Laporan Produk Terjual</h2>
-          <p>Penjualan final hanya menghitung status Selesai dan otomatis mengurangi quantity retur.</p>
+          <p>Jumlah terjual bersih dihitung dari pesanan selesai setelah dikurangi retur.</p>
         </div>
         <button
           className="btn btn-ghost"
@@ -61,14 +61,14 @@ export default function ProductSales({ items, imports, setStatus }: Props) {
 
       {latestImport ? (
         <div className="import-note">
-          Impor terakhir: <strong>{latestImport.file_name}</strong> · {number.format(latestImport.row_count)} baris · {new Date(latestImport.imported_at).toLocaleString("id-ID")}
+          Laporan terakhir: <strong>{latestImport.file_name}</strong> · {number.format(latestImport.row_count)} rincian · {new Date(latestImport.imported_at).toLocaleString("id-ID")}
         </div>
       ) : null}
 
       <div className="product-filters">
         <label className="search-field">
           <Search size={15} />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari produk, variasi, atau SKU" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari produk, variasi, atau kode barang" />
         </label>
         <label>
           Dari
@@ -94,7 +94,7 @@ export default function ProductSales({ items, imports, setStatus }: Props) {
         <div className="product-kpi"><RotateCcw size={20} /><span>Retur selesai<strong>{number.format(summary.returned)}</strong></span></div>
         <div className="product-kpi"><Truck size={20} /><span>Dalam proses<strong>{number.format(summary.shipped + summary.pending)}</strong></span></div>
         <div className="product-kpi"><span>Pesanan unik<strong>{number.format(summary.uniqueOrders)}</strong></span></div>
-        <div className="product-kpi"><span>Produk / SKU<strong>{number.format(summary.uniqueProducts)} / {number.format(summary.uniqueSkus)}</strong></span></div>
+        <div className="product-kpi"><span>Produk / Varian<strong>{number.format(summary.uniqueProducts)} / {number.format(summary.uniqueSkus)}</strong></span></div>
       </div>
 
       {products.length ? (
@@ -119,7 +119,7 @@ export default function ProductSales({ items, imports, setStatus }: Props) {
                     <td>
                       <button className="product-name" type="button" onClick={() => toggle(product.summary.key)}>
                         {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                        <span>{product.summary.productName}<small>{product.variants.size} variasi/SKU</small></span>
+                        <span>{product.summary.productName}<small>{product.variants.size} variasi produk</small></span>
                       </button>
                     </td>
                     <td>{number.format(product.summary.completed)}</td>
@@ -133,7 +133,7 @@ export default function ProductSales({ items, imports, setStatus }: Props) {
                 if (open) {
                   product.variants.forEach((variant) => rows.push(
                     <tr className="variant-row" key={`${product.summary.key}-${variant.key}`}>
-                      <td><span className="variant-name">{variant.variation || "Tanpa variasi"}<small>SKU {variant.skuId}</small></span></td>
+                      <td><span className="variant-name">{variant.variation || "Tanpa variasi"}<small>Kode barang {variant.skuId}</small></span></td>
                       <td>{number.format(variant.completed)}</td>
                       <td>{number.format(variant.returned)}</td>
                       <td className="net-cell">{number.format(variant.netSold)}</td>
@@ -152,7 +152,7 @@ export default function ProductSales({ items, imports, setStatus }: Props) {
         <div className="product-empty">
           <PackageCheck size={34} />
           <h3>Belum ada data produk</h3>
-          <p>Upload file “Semua pesanan” dari TikTok Shop untuk melihat rekap produk terjual.</p>
+          <p>Upload laporan “Semua pesanan” dari TikTok Shop untuk melihat rekap produk terjual.</p>
         </div>
       )}
     </section>
