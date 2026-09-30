@@ -93,21 +93,34 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
         <table className="rows">
           <tbody>
             <tr>
-              <td className="rlabel">Dana Masuk Rekening</td>
+              <td className="rlabel">Dana Masuk Rekening (Withdrawal)</td>
               <td className="ramt pos">{fmtSigned(summary.withdrawal)}</td>
-            </tr>
-            <tr>
-              <td className="rlabel">Biaya Marketing GMV Pay</td>
-              <td className="ramt neg">{fmtSigned(-summary.gmv)}</td>
-            </tr>
-            <tr>
-              <td className="rlabel">Pendapatan Tercatat di Marketplace</td>
-              <td className="ramt pos">{fmtSigned(summary.earnings)}</td>
             </tr>
             <tr className="total">
               <td>Dana Bersih Siap Dibagi</td>
               <td className="ramt">{fmt(summary.gross)}</td>
             </tr>
+            {(summary.gmv > 0 || summary.earnings > 0) && (
+              <>
+                <tr>
+                  <td className="rlabel" colSpan={2} style={{ paddingTop: "14px", fontSize: "11px", color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Catatan Marketplace Tambahan (Informasi)
+                  </td>
+                </tr>
+                {summary.gmv > 0 && (
+                  <tr>
+                    <td className="rlabel" style={{ paddingLeft: "8px" }}>· Biaya Marketing GMV Pay</td>
+                    <td className="ramt neg">{fmtSigned(-summary.gmv)}</td>
+                  </tr>
+                )}
+                {summary.earnings > 0 && (
+                  <tr>
+                    <td className="rlabel" style={{ paddingLeft: "8px" }}>· Pendapatan Tercatat di Marketplace</td>
+                    <td className="ramt pos">{fmtSigned(summary.earnings)}</td>
+                  </tr>
+                )}
+              </>
+            )}
           </tbody>
         </table>
 
