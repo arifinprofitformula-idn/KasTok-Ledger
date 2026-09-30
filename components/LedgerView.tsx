@@ -72,7 +72,7 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
           <div className="page-head-right">
             <div className="stamp">
               Dana Bersih Siap Dibagi<br />{fmt(summary.gross)}
-              <small>Dana Masuk Rekening - Biaya Marketing GMV Pay</small>
+              <small>Sama dengan Dana Masuk Rekening (Withdrawal)</small>
             </div>
             <div className="card-tools">
               <button className="icon-btn" type="button" title="Cetak / simpan sebagai PDF" onClick={() => printSection(pageRef.current, `rekap-${currentKey}`)}>
@@ -117,7 +117,7 @@ export default function LedgerView({ transactions, granularity, splitYou, splitS
             <div className="amt">{fmt(shares.yourShare)}</div>
           </div>
           <div className="split-card supplier">
-            <div className="pct">BAGIAN SUPPLIER + MODAL · {splitSupplier}%</div>
+            <div className="pct">BAGIAN SUPPLIER · {splitSupplier}%</div>
             <div className="amt">{fmt(shares.supplierShare)}</div>
           </div>
         </div>

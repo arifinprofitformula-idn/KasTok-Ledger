@@ -24,8 +24,9 @@ test("UI uses the approved cash-sharing terminology", async () => {
   const ui = `${dashboard}\n${ledger}\n${chart}\n${splitControls}`;
 
   assert.match(ui, /Dana Bersih Siap Dibagi/);
-  assert.match(ui, /Bagian Supplier \+ HPP/);
-  assert.match(ui, /Dana Masuk Rekening - Biaya Marketing GMV Pay/);
+  assert.match(ui, /Bagian Supplier/);
+  assert.doesNotMatch(ui, /Bagian Supplier \+/);
+  assert.doesNotMatch(ui, /Dana Masuk Rekening - Biaya Marketing GMV Pay/);
   assert.doesNotMatch(ui, /Gross Profit/i);
 });
 
@@ -36,6 +37,7 @@ test("monthly spreadsheet uses the approved cash-sharing labels", async () => {
   assert.match(exportSource, /Biaya Marketing GMV Pay/);
   assert.match(exportSource, /Pendapatan Tercatat Marketplace/);
   assert.match(exportSource, /Dana Bersih Siap Dibagi/);
-  assert.match(exportSource, /Bagian Supplier \+ HPP/);
+  assert.match(exportSource, /Bagian Supplier/);
+  assert.doesNotMatch(exportSource, /Bagian Supplier \+/);
   assert.doesNotMatch(exportSource, /Gross Profit/i);
 });

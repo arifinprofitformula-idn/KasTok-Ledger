@@ -293,7 +293,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
               <>
                 <div className="fig"><div className="label">Dana Bersih Siap Dibagi</div><div className="num">{fmt(hero.cashPool)}</div></div>
                 <div className="fig you"><div className="label">Bagian Anda</div><div className="num">{fmt(hero.you)}</div></div>
-                <div className="fig supplier"><div className="label">Bagian Supplier + Modal</div><div className="num">{fmt(hero.supplier)}</div></div>
+                <div className="fig supplier"><div className="label">Bagian Supplier</div><div className="num">{fmt(hero.supplier)}</div></div>
               </>
             ) : activeModule === "products" ? (
               <>
@@ -346,7 +346,7 @@ export default function Dashboard({ initialTransactions, initialOrderItems, init
       ) : <BusinessReport items={orderItems} entries={financialEntries} imports={financialImports} costs={costs} snapshots={costSnapshots} refreshCosts={refreshCosts} setStatus={setStatus} />}
 
       <div id="printArea" />
-      <footer>KasTok Ledger · Dana bersih dihitung dari dana masuk rekening dikurangi biaya promosi marketplace.</footer>
+      <footer>KasTok Ledger · Dana bersih siap dibagi mengikuti Dana Masuk Rekening (Withdrawal) dari file CSV.</footer>
     </main>
   );
 }

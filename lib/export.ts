@@ -63,7 +63,7 @@ export function exportMonthlyRecap(transactions: Transaction[], splitYou: number
     "Pendapatan Tercatat Marketplace",
     "Dana Bersih Siap Dibagi",
     `Bagian Anda (${splitYou}%)`,
-    `Bagian Supplier + HPP (${splitSupplier}%)`
+    `Bagian Supplier (${splitSupplier}%)`
   ];
   const rows: (string | number)[][] = [header];
   let totalWithdrawal = 0;

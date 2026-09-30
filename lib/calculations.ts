@@ -1,6 +1,9 @@
-import type { DateFilter, Granularity, Summary, Transaction } from "@/lib/types";
+import type { DateFilter, Granularity, Transaction } from "@/lib/types";
 import { idMonths } from "@/lib/format";
 import { normalizeDateValue } from "@/lib/date-filter";
+import { summarize } from "@/lib/transaction-summary";
+
+export { summarize };
 
 export function isoWeekInfo(year: number, month: number, day: number) {
   const date = new Date(Date.UTC(year, month - 1, day));
@@ -50,21 +53,6 @@ export function granName(granularity: Granularity) {
   if (granularity === "day") return "Harian";
   if (granularity === "week") return "Mingguan";
   return "Bulanan";
-}
-
-export function summarize(list: Transaction[]): Summary {
-  let withdrawal = 0;
-  let gmv = 0;
-  let earnings = 0;
-
-  list.forEach((item) => {
-    const abs = Math.abs(Number(item.amount));
-    if (item.type === "Withdrawal") withdrawal += abs;
-    if (item.type === "GMV Pay Deduction") gmv += abs;
-    if (item.type === "Earnings") earnings += abs;
-  });
-
-  return { withdrawal, gmv, earnings, gross: withdrawal - gmv };
 }
 
 export function groupByPeriod(granularity: Granularity, list: Transaction[]) {
